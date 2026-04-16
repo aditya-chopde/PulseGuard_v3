@@ -20,9 +20,9 @@ export const createScreening = async (req, res, next) => {
             patientId = req.user._id;
         }
 
-        if(!patientId){
-             if (req.file) try { fs.unlinkSync(req.file.path); } catch(e){}
-             return res.status(400).json({ success: false, error: 'Patient ID is required' });
+        if (!patientId) {
+            if (req.file) try { fs.unlinkSync(req.file.path); } catch(e) {}
+            return res.status(400).json({ success: false, error: 'Patient ID is required' });
         }
 
         // Validate access
@@ -34,13 +34,21 @@ export const createScreening = async (req, res, next) => {
             }
         }
 
-        // 1. Convert audio to WAV 16kHz mono for AI pipeline
+        // 1. Convert to WAV 16kHz mono only if not already a WAV file
         let processedPath;
-        try {
-            processedPath = await convertToWav(req.file.path);
-        } catch (convErr) {
-            console.warn('Audio conversion failed, using original:', convErr.message);
+        const isWav = req.file.originalname?.toLowerCase().endsWith('.wav')
+                   || req.file.mimetype === 'audio/wav'
+                   || req.file.mimetype === 'audio/x-wav';
+
+        if (isWav) {
             processedPath = req.file.path;
+        } else {
+            try {
+                processedPath = await convertToWav(req.file.path);
+            } catch (convErr) {
+                console.warn('Audio conversion failed, using original:', convErr.message);
+                processedPath = req.file.path;
+            }
         }
 
         const optimizedPath = processedPath.replace(/\\/g, '/');
@@ -48,11 +56,11 @@ export const createScreening = async (req, res, next) => {
 
         // 2. Transmit to Python AI Pipeline
         const aiResult = await analyzeAudio(optimizedPath);
-        console.log("AI Result: ", aiResult)
+        console.log("AI Result: ", aiResult);
 
         // Fallback checks
         if (!aiResult || !aiResult.disease || !aiResult.severity) {
-            console.log("Invalid response from AI service")
+            console.log("Invalid response from AI service");
             return res.status(500).json({ success: false, error: 'Invalid response from AI service' });
         }
 
@@ -79,7 +87,7 @@ export const createScreening = async (req, res, next) => {
         res.status(201).json({ success: true, data: screening });
     } catch (error) {
         if (req.file) {
-            try { fs.unlinkSync(req.file.path); } catch(e){}
+            try { fs.unlinkSync(req.file.path); } catch(e) {}
         }
         next(error);
     }
