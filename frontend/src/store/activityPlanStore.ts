@@ -25,68 +25,139 @@ interface ActivityPlanStore {
   updateNotes: (patientId: string, notes: string) => Promise<void>;
 }
 
+/**
+ * Transforms a backend activity item (with _id) to frontend shape (with id).
+ */
+function mapBackendItem(item: any): ActivityItem {
+  return {
+    id: item._id || item.id,
+    time: item.time,
+    activity: item.activity,
+    category: item.category,
+  };
+}
+
 export const useActivityPlanStore = create<ActivityPlanStore>((set, get) => ({
   plans: {},
 
   fetchPlan: async (patientId) => {
     try {
-      const plan = await activityService.getPlan(patientId);
-      if (plan) {
-        set((state) => ({ plans: { ...state.plans, [patientId]: plan } }));
+      const response = await activityService.getPlan(patientId);
+      // Backend returns { success, data: { plan, items } }
+      const raw = response?.data || response;
+      if (!raw?.plan) return undefined;
+
+      const transformed: PatientActivityPlan = {
+        patientId,
+        items: (raw.items || []).map(mapBackendItem),
+        notes: raw.plan.notes || '',
+        updatedAt: raw.plan.updatedAt || new Date().toISOString(),
+      };
+
+      set((state) => ({ plans: { ...state.plans, [patientId]: transformed } }));
+      return transformed;
+    } catch (err: any) {
+      // 404 is expected if no plan exists yet — not an error
+      if (err?.response?.status === 404) {
+        return undefined;
       }
-      return plan;
-    } catch (err) {
-      console.error(err);
+      console.error('Failed to fetch activity plan:', err);
       return undefined;
     }
   },
 
   savePlan: async (plan) => {
     try {
-      await activityService.updatePlan(plan.patientId, plan);
+      await activityService.updatePlan(plan.patientId, { notes: plan.notes });
       set((state) => ({
         plans: { ...state.plans, [plan.patientId]: { ...plan, updatedAt: new Date().toISOString() } },
       }));
     } catch (err) {
-      console.error(err);
+      console.error('Failed to save plan:', err);
     }
   },
 
   addItem: async (patientId, item) => {
     try {
-      await activityService.addItem(patientId, item);
+      // Ensure a plan exists first (upsert)
+      const existing = get().plans[patientId];
+      if (!existing) {
+        await activityService.updatePlan(patientId, { notes: '' });
+      }
+
+      // POST the item to the backend
+      const response = await activityService.addItem(patientId, {
+        time: item.time,
+        activity: item.activity,
+        category: item.category,
+        sortOrder: 0,
+      });
+
+      // Use the backend-generated _id
+      const savedItem = mapBackendItem(response?.data || response);
+
       set((state) => {
-        const existing = state.plans[patientId] || { patientId, items: [], notes: '', updatedAt: '' };
+        const plan = state.plans[patientId] || { patientId, items: [], notes: '', updatedAt: '' };
         return {
           plans: {
             ...state.plans,
-            [patientId]: { ...existing, items: [...existing.items, item], updatedAt: new Date().toISOString() },
+            [patientId]: {
+              ...plan,
+              items: [...plan.items, savedItem],
+              updatedAt: new Date().toISOString(),
+            },
           },
         };
       });
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error('Failed to add activity item:', err);
+      throw err;
+    }
   },
 
   updateItem: async (patientId, itemId, updates) => {
-    // Optimistic or rely on full plan update
-    // The backend endpoint only supports put /activity-plans/:patientId for wholesale updates ideally,
-    // or specific endpoints. Assuming /activity-plans/:patientId/items/:itemId PUT exists or we update full plan.
     try {
+      // Backend doesn't have a PUT /items/:itemId endpoint.
+      // Strategy: delete old item, create new one with updated fields.
       const plan = get().plans[patientId];
       if (!plan) return;
-      const updatedPlan = {
-        ...plan,
-        items: plan.items.map((i) => (i.id === itemId ? { ...i, ...updates } : i)),
-      };
-      await activityService.updatePlan(patientId, updatedPlan);
-      
-      set((state) => ({
-        plans: {
-          ...state.plans,
-          [patientId]: { ...updatedPlan, updatedAt: new Date().toISOString() },
-        },
-      }));
-    } catch (err) { console.error(err); }
+
+      const oldItem = plan.items.find((i) => i.id === itemId);
+      if (!oldItem) return;
+
+      const updatedItem = { ...oldItem, ...updates };
+
+      // Delete old item from backend
+      await activityService.removeItem(patientId, itemId);
+
+      // Create new item
+      const response = await activityService.addItem(patientId, {
+        time: updatedItem.time,
+        activity: updatedItem.activity,
+        category: updatedItem.category,
+        sortOrder: 0,
+      });
+
+      const savedItem = mapBackendItem(response?.data || response);
+
+      set((state) => {
+        const currentPlan = state.plans[patientId];
+        if (!currentPlan) return state;
+        return {
+          plans: {
+            ...state.plans,
+            [patientId]: {
+              ...currentPlan,
+              items: currentPlan.items.map((i) => (i.id === itemId ? savedItem : i)),
+              updatedAt: new Date().toISOString(),
+            },
+          },
+        };
+      });
+    } catch (err) {
+      console.error('Failed to update activity item:', err);
+      throw err;
+    }
   },
 
   removeItem: async (patientId, itemId) => {
@@ -106,20 +177,28 @@ export const useActivityPlanStore = create<ActivityPlanStore>((set, get) => ({
           },
         };
       });
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error('Failed to remove activity item:', err);
+      throw err;
+    }
   },
 
   updateNotes: async (patientId, notes) => {
     try {
-      const existing = get().plans[patientId] || { patientId, items: [], notes: '', updatedAt: '' };
-      const updatedPlan = { ...existing, notes };
-      await activityService.updatePlan(patientId, updatedPlan);
-      set((state) => ({
-        plans: {
-          ...state.plans,
-          [patientId]: { ...updatedPlan, updatedAt: new Date().toISOString() },
-        },
-      }));
-    } catch (err) { console.error(err); }
+      // Only send { notes } — that's all the backend accepts
+      await activityService.updatePlan(patientId, { notes });
+      set((state) => {
+        const existing = state.plans[patientId] || { patientId, items: [], notes: '', updatedAt: '' };
+        return {
+          plans: {
+            ...state.plans,
+            [patientId]: { ...existing, notes, updatedAt: new Date().toISOString() },
+          },
+        };
+      });
+    } catch (err) {
+      console.error('Failed to update notes:', err);
+      throw err;
+    }
   },
 }));

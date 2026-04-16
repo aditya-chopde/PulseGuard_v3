@@ -17,6 +17,7 @@ import { useQuery } from '@tanstack/react-query';
 import { RequestStatusBadge } from '@/components/RequestStatusBadge';
 import { DoctorSelectDropdown } from '@/components/DoctorSelectDropdown';
 import type { DoctorPatientMapping } from '@/types/doctorPatient';
+import { useActivityPlanStore } from '@/store/activityPlanStore';
 
 export default function PatientDashboard() {
   const navigate = useNavigate();
@@ -34,13 +35,18 @@ export default function PatientDashboard() {
   
   const requests = requestsData?.data || [];
 
+  const { plans, fetchPlan } = useActivityPlanStore();
+
+  const userId = user?._id || user?.id || '';
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const userId = user?._id || user?.id;
         if (userId) {
           const data = await patientService.getPatientById(userId);
           setPatient(data);
+          // Fetch activity plan
+          fetchPlan(userId);
         }
       } catch (error) {
         console.error('Failed to fetch patient data', error);
@@ -55,6 +61,8 @@ export default function PatientDashboard() {
     };
     fetchData();
   }, [user]);
+
+  const activityPlan = plans[userId];
 
   useEffect(() => {
     const accepted = requests.find((r: any) => r.status === 'accepted');
@@ -296,23 +304,53 @@ export default function PatientDashboard() {
               </div>
             </motion.div>
 
-            {/* Activity Suggestions */}
+            {/* Activity Plan from Doctor */}
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="glass-card p-5">
-              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                <Activity className="h-4 w-4 text-primary" /> Activity Suggestions
-              </h3>
-              <div className="space-y-2">
-                {[
-                  { level: 'Low Risk', desc: '30 min walking, yoga', color: 'success' },
-                  { level: 'Moderate', desc: 'Light cardio, breathing exercises', color: 'warning' },
-                  { level: 'High Risk', desc: 'Rest frequently, deep breathing', color: 'critical' },
-                ].map(a => (
-                  <div key={a.level} className={`p-2.5 rounded-lg bg-${a.color}/5 border border-${a.color}/10`}>
-                    <div className={`text-[10px] font-semibold text-${a.color}`}>{a.level}</div>
-                    <p className="text-[10px] text-muted-foreground">{a.desc}</p>
-                  </div>
-                ))}
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-primary" /> Activity Plan
+                </h3>
+                <button onClick={() => navigate('/activity')} className="text-[10px] text-primary hover:underline">
+                  View Full Plan →
+                </button>
               </div>
+              {activityPlan && activityPlan.items.length > 0 ? (
+                <div className="space-y-2">
+                  {activityPlan.items
+                    .sort((a, b) => a.time.localeCompare(b.time))
+                    .slice(0, 4)
+                    .map((item) => (
+                      <div key={item.id} className="flex items-center gap-2.5 p-2.5 rounded-lg bg-muted/30">
+                        <Clock className="h-3 w-3 text-primary flex-shrink-0" />
+                        <span className="text-[10px] font-mono font-semibold text-primary w-16 flex-shrink-0">{item.time}</span>
+                        <span className="text-[10px] text-foreground truncate">{item.activity}</span>
+                        <span className="text-[8px] font-semibold uppercase tracking-wider text-muted-foreground ml-auto hidden sm:block">{item.category}</span>
+                      </div>
+                    ))}
+                  {activityPlan.items.length > 4 && (
+                    <p className="text-[10px] text-muted-foreground text-center">+{activityPlan.items.length - 4} more activities</p>
+                  )}
+                  {activityPlan.notes && (
+                    <div className="p-2 rounded-lg bg-primary/5 border border-primary/10 mt-2">
+                      <div className="text-[9px] font-semibold text-primary mb-0.5">Doctor's Notes</div>
+                      <p className="text-[10px] text-muted-foreground line-clamp-2">{activityPlan.notes}</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {[
+                    { level: 'Low Risk', desc: '30 min walking, yoga', color: 'success' },
+                    { level: 'Moderate', desc: 'Light cardio, breathing exercises', color: 'warning' },
+                    { level: 'High Risk', desc: 'Rest frequently, deep breathing', color: 'critical' },
+                  ].map(a => (
+                    <div key={a.level} className={`p-2.5 rounded-lg bg-${a.color}/5 border border-${a.color}/10`}>
+                      <div className={`text-[10px] font-semibold text-${a.color}`}>{a.level}</div>
+                      <p className="text-[10px] text-muted-foreground">{a.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </motion.div>
           </div>
         </div>

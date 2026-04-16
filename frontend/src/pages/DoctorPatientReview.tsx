@@ -43,9 +43,10 @@ export default function DoctorPatientReview() {
   const latest = patient?.screenings?.[patient.screenings.length - 1];
 
   const handleSaveRemarks = async () => {
-    if (latest?.id) {
+    const screeningId = latest?._id || latest?.id;
+    if (screeningId) {
       try {
-        await screeningService.updateDoctorReview(latest.id, remarks);
+        await screeningService.updateDoctorReview(screeningId, remarks);
         toast.success('Remarks saved');
       } catch (err) {
         toast.error('Failed to save remarks');
@@ -56,9 +57,10 @@ export default function DoctorPatientReview() {
   };
 
   const handleMarkReviewed = async () => {
-    if (latest?.id) {
+    const screeningId = latest?._id || latest?.id;
+    if (screeningId) {
       try {
-        await screeningService.updateDoctorReview(latest.id, remarks, 'reviewed');
+        await screeningService.updateDoctorReview(screeningId, remarks, 'reviewed');
         setReviewed(true);
         toast.success('Case marked as reviewed');
       } catch (err) {
@@ -153,7 +155,7 @@ export default function DoctorPatientReview() {
 
         {/* Activity Plan Editor */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }} className="glass-card p-6">
-          <ActivityPlanEditor patientId={patient.id} patientName={patient.name} />
+          <ActivityPlanEditor patientId={patient._id || patient.id} patientName={patient.name} />
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="glass-card p-6">

@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react';
 import DashboardLayout from '@/components/DashboardLayout';
-import { patientService } from '@/services/patientService';
-import { recommendationService } from '@/services/recommendationService';
 import { useAuth } from '@/hooks/useAuth';
 import { useActivityPlanStore } from '@/store/activityPlanStore';
 import { motion } from 'framer-motion';
-import { Activity, Heart, Sun, Wind, Clock, UtensilsCrossed, Pill, ClipboardList } from 'lucide-react';
+import { Activity, Heart, Sun, Wind, Clock, UtensilsCrossed, Pill, ClipboardList, Loader2 } from 'lucide-react';
 
 const categoryIcons: Record<string, typeof Activity> = {
   exercise: Activity,
@@ -25,71 +23,40 @@ const categoryColors: Record<string, string> = {
 
 export default function ActivityPage() {
   const { user } = useAuth();
-  const [patient, setPatient] = useState<any>(null);
-  const [rec, setRec] = useState<any>(null);
   const { plans, fetchPlan } = useActivityPlanStore();
+  const [loading, setLoading] = useState(true);
+
+  const userId = user?._id || user?.id || '';
 
   useEffect(() => {
     const loadData = async () => {
-      const userId = user?._id || user?.id;
       if (userId) {
-        const pData = await patientService.getPatientById(userId);
-        setPatient(pData);
+        setLoading(true);
         await fetchPlan(userId);
-
-        const latestScreening = pData?.screenings?.[pData.screenings.length - 1];
-        if (latestScreening) {
-          const rData = await recommendationService.getRecommendations(latestScreening.severity, latestScreening.riskScore);
-          setRec(rData);
-        }
+        setLoading(false);
       }
     };
     loadData();
-  }, [user]);
+  }, [userId, fetchPlan]);
 
-  const latest = patient?.screenings?.[patient.screenings.length - 1];
-  const doctorPlan = plans[user?._id || user?.id || ''];
+  const doctorPlan = plans[userId];
 
-  const getRiskLevel = () => {
-    if (!latest) return 'unknown';
-    if (latest.riskScore <= 30) return 'low';
-    if (latest.riskScore <= 65) return 'moderate';
-    return 'high';
-  };
+  // Hardcoded fallback schedule based on general risk guidance
+  const dailySchedule = [
+    { time: '6:00 AM', activity: 'Morning walk (30 min)', icon: Sun, category: 'exercise' },
+    { time: '7:00 AM', activity: 'Light stretching / Yoga', icon: Activity, category: 'exercise' },
+    { time: '10:00 AM', activity: 'Deep breathing exercises (10 min)', icon: Wind, category: 'breathing' },
+    { time: '4:00 PM', activity: 'Brisk walking or jogging (20 min)', icon: Activity, category: 'exercise' },
+    { time: '7:00 PM', activity: 'Evening relaxation walk (15 min)', icon: Sun, category: 'rest' },
+  ];
 
-  const riskLevel = getRiskLevel();
-
-  const dailySchedule: Record<string, { time: string; activity: string; icon: typeof Sun }[]> = {
-    low: [
-      { time: '6:00 AM', activity: 'Morning walk (30 min)', icon: Sun },
-      { time: '7:00 AM', activity: 'Light stretching / Yoga', icon: Activity },
-      { time: '10:00 AM', activity: 'Deep breathing exercises (10 min)', icon: Wind },
-      { time: '4:00 PM', activity: 'Brisk walking or jogging (20 min)', icon: Activity },
-      { time: '7:00 PM', activity: 'Evening relaxation walk (15 min)', icon: Sun },
-    ],
-    moderate: [
-      { time: '6:30 AM', activity: 'Gentle walk (20 min)', icon: Sun },
-      { time: '8:00 AM', activity: 'Breathing exercises (15 min)', icon: Wind },
-      { time: '11:00 AM', activity: 'Light stretching (10 min)', icon: Activity },
-      { time: '4:00 PM', activity: 'Slow walk (15 min)', icon: Sun },
-      { time: '8:00 PM', activity: 'Guided relaxation / meditation', icon: Wind },
-    ],
-    high: [
-      { time: '7:00 AM', activity: 'Seated breathing exercises (10 min)', icon: Wind },
-      { time: '10:00 AM', activity: 'Gentle seated stretching', icon: Activity },
-      { time: '2:00 PM', activity: 'Short slow walk (5 min, if approved)', icon: Sun },
-      { time: '5:00 PM', activity: 'Deep breathing (10 min)', icon: Wind },
-      { time: '8:00 PM', activity: 'Rest and relaxation', icon: Heart },
-    ],
-    unknown: [],
-  };
-
-  const schedule = dailySchedule[riskLevel] || [];
-
-  if (!patient) {
+  if (loading) {
     return (
       <DashboardLayout>
-        <div className="flex justify-center py-10 text-muted-foreground">Loading activity plan...</div>
+        <div className="flex items-center justify-center py-20 text-muted-foreground">
+          <Loader2 className="h-6 w-6 animate-spin mr-2" />
+          Loading activity plan...
+        </div>
       </DashboardLayout>
     );
   }
@@ -98,20 +65,11 @@ export default function ActivityPage() {
     <DashboardLayout>
       <div className="max-w-2xl mx-auto space-y-6">
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <Activity className="h-6 w-6 text-primary" /> Daily Activity Suggestions
+          <Activity className="h-6 w-6 text-primary" /> Activity Plan
         </h1>
 
-        <div className={`p-4 rounded-xl text-sm font-medium ${
-          riskLevel === 'low' ? 'bg-success/10 text-success' :
-          riskLevel === 'moderate' ? 'bg-warning/10 text-warning' :
-          riskLevel === 'high' ? 'bg-critical/10 text-critical' : 'bg-muted/30 text-muted-foreground'
-        }`}>
-          Current Risk Level: <span className="font-bold capitalize">{riskLevel}</span>
-          {latest && ` (Score: ${latest.riskScore})`}
-        </div>
-
         {/* Doctor-prescribed plan */}
-        {doctorPlan && doctorPlan.items.length > 0 && (
+        {doctorPlan && doctorPlan.items.length > 0 ? (
           <div className="glass-card p-6">
             <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
               <ClipboardList className="h-5 w-5 text-primary" />
@@ -151,28 +109,27 @@ export default function ActivityPage() {
               </div>
             )}
           </div>
-        )}
-
-        {rec && (
-          <div className="glass-card p-6">
-            <h3 className="font-semibold text-foreground mb-3">AI-Suggested Activity Plan</h3>
-            <ul className="space-y-2">
-              {rec.activityPlan.map((a, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                  <Activity className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" /> {a}
-                </li>
-              ))}
-            </ul>
+        ) : (
+          <div className="glass-card p-8 text-center">
+            <ClipboardList className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+            <h3 className="text-base font-semibold text-foreground mb-1">No Activity Plan Yet</h3>
+            <p className="text-sm text-muted-foreground">
+              Your doctor hasn't created a personalized activity plan for you yet. 
+              Below are some general suggestions.
+            </p>
           </div>
         )}
 
+        {/* General Daily Schedule (always shown as suggestions) */}
         <div className="glass-card p-6">
-          <h3 className="font-semibold text-foreground mb-4">Suggested Daily Schedule</h3>
+          <h3 className="font-semibold text-foreground mb-4">General Daily Schedule Suggestions</h3>
           <div className="space-y-3">
-            {schedule.map((item, i) => (
+            {dailySchedule.map((item, i) => (
               <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }} className="flex items-center gap-4 p-3 rounded-xl bg-muted/20">
                 <div className="text-sm font-mono font-semibold text-primary w-20">{item.time}</div>
-                <item.icon className="h-4 w-4 text-muted-foreground" />
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${categoryColors[item.category] || 'bg-muted text-muted-foreground'}`}>
+                  <item.icon className="h-3.5 w-3.5" />
+                </div>
                 <span className="text-sm text-foreground">{item.activity}</span>
               </motion.div>
             ))}

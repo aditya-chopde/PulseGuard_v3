@@ -16,7 +16,7 @@ const activityItemSchema = new mongoose.Schema({
     },
     category: {
         type: String,
-        enum: ['exercise', 'diet', 'rest', 'medication'],
+        enum: ['exercise', 'breathing', 'diet', 'rest', 'medication'],
         required: true
     },
     sortOrder: {

@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useActivityPlanStore, ActivityItem } from '@/store/activityPlanStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Pencil, Trash2, Clock, Activity, Wind, Heart, UtensilsCrossed, Pill, ClipboardList } from 'lucide-react';
+import { Plus, Pencil, Trash2, Clock, Activity, Wind, Heart, UtensilsCrossed, Pill, ClipboardList, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -14,7 +14,7 @@ interface ActivityPlanEditorProps {
   patientName: string;
 }
 
-const categoryIcons = {
+const categoryIcons: Record<string, typeof Activity> = {
   exercise: Activity,
   breathing: Wind,
   rest: Heart,
@@ -31,7 +31,7 @@ const categoryColors: Record<string, string> = {
 };
 
 export default function ActivityPlanEditor({ patientId, patientName }: ActivityPlanEditorProps) {
-  const { plans, addItem, updateItem, removeItem, updateNotes } = useActivityPlanStore();
+  const { plans, fetchPlan, addItem, updateItem, removeItem, updateNotes } = useActivityPlanStore();
   const plan = plans[patientId];
   const items = plan?.items || [];
   const notes = plan?.notes || '';
@@ -41,6 +41,16 @@ export default function ActivityPlanEditor({ patientId, patientName }: ActivityP
   const [time, setTime] = useState('');
   const [activity, setActivity] = useState('');
   const [category, setCategory] = useState<ActivityItem['category']>('exercise');
+  const [saving, setSaving] = useState(false);
+  const [loadingPlan, setLoadingPlan] = useState(true);
+
+  // Fetch existing plan when component mounts or patientId changes
+  useEffect(() => {
+    if (patientId) {
+      setLoadingPlan(true);
+      fetchPlan(patientId).finally(() => setLoadingPlan(false));
+    }
+  }, [patientId, fetchPlan]);
 
   const resetForm = () => {
     setTime('');
@@ -62,34 +72,76 @@ export default function ActivityPlanEditor({ patientId, patientName }: ActivityP
     setDialogOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!time.trim() || !activity.trim()) {
       toast.error('Please fill in all fields');
       return;
     }
 
-    if (editingItem) {
-      updateItem(patientId, editingItem.id, { time: time.trim(), activity: activity.trim(), category });
-      toast.success('Activity updated');
-    } else {
-      const newItem: ActivityItem = {
-        id: `act-${Date.now()}`,
-        time: time.trim(),
-        activity: activity.trim(),
-        category,
-      };
-      addItem(patientId, newItem);
-      toast.success('Activity added');
+    setSaving(true);
+    try {
+      if (editingItem) {
+        await updateItem(patientId, editingItem.id, { time: time.trim(), activity: activity.trim(), category });
+        toast.success('Activity updated');
+      } else {
+        const newItem: ActivityItem = {
+          id: '', // Will be replaced by backend _id
+          time: time.trim(),
+          activity: activity.trim(),
+          category,
+        };
+        await addItem(patientId, newItem);
+        toast.success('Activity added');
+      }
+      setDialogOpen(false);
+      resetForm();
+    } catch (err) {
+      toast.error('Failed to save activity. Please try again.');
+    } finally {
+      setSaving(false);
     }
-
-    setDialogOpen(false);
-    resetForm();
   };
 
-  const handleDelete = (itemId: string) => {
-    removeItem(patientId, itemId);
-    toast.success('Activity removed');
+  const handleDelete = async (itemId: string) => {
+    try {
+      await removeItem(patientId, itemId);
+      toast.success('Activity removed');
+    } catch (err) {
+      toast.error('Failed to remove activity');
+    }
   };
+
+  const handleNotesChange = async (value: string) => {
+    try {
+      await updateNotes(patientId, value);
+    } catch (err) {
+      // Silently fail for debounce-like behavior; notes will update on next save
+    }
+  };
+
+  // Debounce notes updates
+  const [localNotes, setLocalNotes] = useState(notes);
+  useEffect(() => {
+    setLocalNotes(notes);
+  }, [notes]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (localNotes !== notes && patientId) {
+        handleNotesChange(localNotes);
+      }
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [localNotes]);
+
+  if (loadingPlan) {
+    return (
+      <div className="flex items-center justify-center py-8 text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin mr-2" />
+        Loading activity plan...
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -145,7 +197,8 @@ export default function ActivityPlanEditor({ patientId, patientName }: ActivityP
                 </Select>
               </div>
               <div className="flex gap-3 pt-2">
-                <Button onClick={handleSave} className="flex-1 gradient-primary text-primary-foreground border-0">
+                <Button onClick={handleSave} disabled={saving} className="flex-1 gradient-primary text-primary-foreground border-0">
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
                   {editingItem ? 'Update' : 'Add'}
                 </Button>
                 <Button variant="outline" onClick={() => setDialogOpen(false)} className="border-border">
@@ -167,7 +220,7 @@ export default function ActivityPlanEditor({ patientId, patientName }: ActivityP
             {items
               .sort((a, b) => a.time.localeCompare(b.time))
               .map((item) => {
-                const Icon = categoryIcons[item.category];
+                const Icon = categoryIcons[item.category] || Activity;
                 return (
                   <motion.div
                     key={item.id}
@@ -176,7 +229,7 @@ export default function ActivityPlanEditor({ patientId, patientName }: ActivityP
                     exit={{ opacity: 0, x: -20 }}
                     className="flex items-center gap-3 p-3 rounded-xl bg-muted/20 border border-border/50 group"
                   >
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${categoryColors[item.category]}`}>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${categoryColors[item.category] || 'bg-muted text-muted-foreground'}`}>
                       <Icon className="h-4 w-4" />
                     </div>
                     <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -207,8 +260,8 @@ export default function ActivityPlanEditor({ patientId, patientName }: ActivityP
       <div className="pt-2">
         <label className="text-sm font-medium text-muted-foreground mb-1.5 block">Doctor Notes for Activity Plan</label>
         <Textarea
-          value={notes}
-          onChange={(e) => updateNotes(patientId, e.target.value)}
+          value={localNotes}
+          onChange={(e) => setLocalNotes(e.target.value)}
           placeholder="Add notes about this patient's activity restrictions, goals, etc."
           className="bg-muted/30 border-border"
           rows={3}
