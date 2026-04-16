@@ -4,11 +4,31 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 interface HeartSoundWaveformChartProps {
   condition: string;
   riskScore: number;
+  realData?: number[];
 }
 
-export default function HeartSoundWaveformChart({ condition, riskScore }: HeartSoundWaveformChartProps) {
+export default function HeartSoundWaveformChart({ condition, riskScore, realData }: HeartSoundWaveformChartProps) {
   const data = useMemo(() => {
     const points: { time: number; amplitude: number; s1s2: number }[] = [];
+    
+    // If we have actual extracted PCG array from the backend
+    if (realData && realData.length > 0) {
+        for (let i = 0; i < realData.length; i++) {
+             // scale amplitude slightly for aesthetics but it's raw real data envelope
+             let amp = realData[i];
+             
+             // Very simple peak approximation based on exact amplitude spikes
+             let isPeak = Math.abs(amp) > 0.4 ? amp * 0.9 : 0; 
+
+             points.push({
+                 time: i * 10, // Approximate x-axis 
+                 amplitude: Math.round(amp * 1000) / 1000,
+                 s1s2: Math.round(isPeak * 1000) / 1000
+             });
+        }
+        return points;
+    }
+
     const abnormalityFactor = riskScore / 100;
 
     for (let i = 0; i < 200; i++) {
@@ -57,7 +77,7 @@ export default function HeartSoundWaveformChart({ condition, riskScore }: HeartS
       });
     }
     return points;
-  }, [condition, riskScore]);
+  }, [condition, riskScore, realData]);
 
   return (
     <ResponsiveContainer width="100%" height={220}>

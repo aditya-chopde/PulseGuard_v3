@@ -160,6 +160,50 @@ def get_risk_band(score):
 
 
 # -----------------------------
+# GRAPH DATA EXTRACTION
+# -----------------------------
+def get_graph_data(y):
+    # 1. Downsample PCG to 200 points to keep frontend lightning fast
+    num_points = 200
+    chunk_size = max(1, len(y) // num_points)
+    
+    pcg_data = []
+    for i in range(num_points):
+        chunk = y[i * chunk_size : (i + 1) * chunk_size]
+        if len(chunk) > 0:
+            pcg_data.append(float(np.max(chunk)) if i % 2 == 0 else float(np.min(chunk)))
+        else:
+            pcg_data.append(0.0)
+
+    # 2. Extract Frequency Spectrum (50 bins, ~20Hz to ~800Hz)
+    # FFT resolution = SR / N. We want up to 800Hz.
+    fft_vals = np.abs(np.fft.rfft(y))
+    fft_freqs = np.fft.rfftfreq(len(y), 1.0 / SR)
+    
+    spectrum_data = []
+    # Create 50 linearly spaced bins from 20 to 800 Hz
+    bin_edges = np.linspace(20, 800, 51)
+    
+    for i in range(50):
+        low, high = bin_edges[i], bin_edges[i+1]
+        
+        # indices in fft_freqs
+        idx = np.where((fft_freqs >= low) & (fft_freqs < high))[0]
+        
+        if len(idx) > 0:
+            val = float(np.mean(fft_vals[idx]))
+        else:
+            val = 0.0
+        spectrum_data.append(val)
+        
+    # Normalize spectrum data so the highest peak is ~1.0 for charting
+    max_spec = max(spectrum_data) if len(spectrum_data) > 0 else 1.0
+    if max_spec > 0:
+        spectrum_data = [x / max_spec for x in spectrum_data]
+
+    return pcg_data, spectrum_data
+
+# -----------------------------
 # MAIN PREDICTION FUNCTION
 # -----------------------------
 def predict_audio(file_path):
@@ -190,12 +234,16 @@ def predict_audio(file_path):
         risk_score = get_risk_score(pred_class, confidence, severity, snr)
         risk_level = get_risk_band(risk_score)
 
+        pcg_data, spectrum_data = get_graph_data(y)
+
         return {
             "disease": disease,
             "confidence": round(confidence, 2),
             "severity": severity,
             "risk_score": risk_score,
             "risk_level": risk_level,
+            "pcg_data": pcg_data,
+            "spectrum_data": spectrum_data,
         }
 
     except Exception as e:

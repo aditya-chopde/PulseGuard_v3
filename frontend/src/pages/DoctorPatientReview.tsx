@@ -13,6 +13,10 @@ import ActivityPlanEditor from '@/components/ActivityPlanEditor';
 import { User, ArrowLeft, CheckCircle, MessageSquare } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import MedicineLookupWidget from '@/components/MedicineLookupWidget';
+import HeartSoundWaveformChart from '@/components/charts/HeartSoundWaveformChart';
+import FrequencySpectrumChart from '@/components/charts/FrequencySpectrumChart';
+import { AudioWaveform, Activity, BarChart3 } from 'lucide-react';
 
 export default function DoctorPatientReview() {
   const { patientId } = useParams();
@@ -153,10 +157,34 @@ export default function DoctorPatientReview() {
           )}
         </div>
 
-        {/* Activity Plan Editor */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }} className="glass-card p-6">
-          <ActivityPlanEditor patientId={patient._id || patient.id} patientName={patient.name} />
-        </motion.div>
+        {latest && (
+          <div className="grid md:grid-cols-2 gap-5">
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="glass-card p-6">
+              <h3 className="text-lg font-semibold text-foreground mb-1 flex items-center gap-2">
+                <AudioWaveform className="h-5 w-5 text-primary" /> Phonocardiogram (PCG) Signal
+              </h3>
+              <HeartSoundWaveformChart condition={latest.condition} riskScore={latest.riskScore} realData={latest.pcgData} />
+            </motion.div>
+            
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }} className="glass-card p-6">
+              <h3 className="text-lg font-semibold text-foreground mb-1 flex items-center gap-2">
+                <Activity className="h-5 w-5 text-primary" /> Frequency Spectrum
+              </h3>
+              <FrequencySpectrumChart condition={latest.condition} riskScore={latest.riskScore} realData={latest.spectrumData} />
+            </motion.div>
+          </div>
+        )}
+
+        {/* Activity Plan & Medicines */}
+        <div className="grid md:grid-cols-12 gap-5">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }} className="glass-card p-6 md:col-span-7">
+            <ActivityPlanEditor patientId={patient._id || patient.id} patientName={patient.name} />
+          </motion.div>
+          
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }} className="md:col-span-5 flex flex-col">
+            <MedicineLookupWidget />
+          </motion.div>
+        </div>
 
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="glass-card p-6">
           <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">

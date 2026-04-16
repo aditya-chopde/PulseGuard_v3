@@ -5,7 +5,6 @@ import { patientService } from '@/services/patientService';
 import { useAuth } from '@/hooks/useAuth';
 import RiskGauge from '@/components/charts/RiskGauge';
 import RiskTrendChart from '@/components/charts/RiskTrendChart';
-import HeartRateChart from '@/components/charts/HeartRateChart';
 import RiskCircle from '@/components/charts/RiskCircle';
 import SeverityBadge from '@/components/SeverityBadge';
 import { Button } from '@/components/ui/button';
@@ -18,6 +17,7 @@ import { RequestStatusBadge } from '@/components/RequestStatusBadge';
 import { DoctorSelectDropdown } from '@/components/DoctorSelectDropdown';
 import type { DoctorPatientMapping } from '@/types/doctorPatient';
 import { useActivityPlanStore } from '@/store/activityPlanStore';
+import MedicineLookupWidget from '@/components/MedicineLookupWidget';
 
 export default function PatientDashboard() {
   const navigate = useNavigate();
@@ -218,7 +218,6 @@ export default function PatientDashboard() {
                   { icon: Droplets, label: 'Blood', value: patient.bloodGroup, color: 'text-critical' },
                   { icon: Weight, label: 'Weight', value: `${patient.weight} kg`, color: 'text-primary' },
                   { icon: Ruler, label: 'Height', value: `${patient.height} cm`, color: 'text-accent' },
-                  { icon: Heart, label: 'BPM', value: `${65 + Math.floor(Math.random() * 20)}`, color: 'text-critical' },
                 ].map(item => (
                   <div key={item.label} className="p-2 rounded-lg bg-muted/30 text-center">
                     <item.icon className={`h-3.5 w-3.5 ${item.color} mx-auto mb-0.5`} />
@@ -272,13 +271,8 @@ export default function PatientDashboard() {
               </motion.div>
             </div>
 
-            {/* Heart Rate */}
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card p-5">
-              <h3 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
-                <Heart className="h-4 w-4 text-critical" /> Heart Rate Trends
-              </h3>
-              <p className="text-[10px] text-muted-foreground mb-3">Avg 71 BPM • Healthy range: 60-80</p>
-              <HeartRateChart />
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+              <MedicineLookupWidget />
             </motion.div>
           </div>
 

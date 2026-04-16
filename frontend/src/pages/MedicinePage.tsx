@@ -13,6 +13,12 @@ export default function MedicinePage() {
   const [medicinesList, setMedicinesList] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
+  const getCleanArray = (data: any): string[] => {
+    if (!data) return [];
+    const str = Array.isArray(data) ? data.join(',') : String(data);
+    return str.replace(/[\[\]"']/g, '').split(',').map(s => s.trim()).filter(Boolean);
+  };
+
   useEffect(() => {
     const fetchMeds = async () => {
       try {
@@ -130,16 +136,16 @@ export default function MedicinePage() {
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-foreground mb-1">Uses</h3>
-                <p className="text-sm text-muted-foreground">{result.uses}</p>
+                <p className="text-sm text-muted-foreground">{getCleanArray(result.uses).join(', ')}</p>
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-foreground mb-1">Dosage</h3>
-                <p className="text-sm text-muted-foreground">{result.dosage}</p>
+                <p className="text-sm text-muted-foreground">{result.dosage?.replace(/["\[\]]/g, '')}</p>
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-foreground mb-1">Side Effects</h3>
                 <div className="flex flex-wrap gap-1.5">
-                  {result.sideEffects?.map((se: string) => (
+                  {getCleanArray(result.sideEffects).map((se: string) => (
                     <span key={se} className="px-2 py-0.5 rounded-full text-xs bg-warning/10 text-warning">{se}</span>
                   ))}
                 </div>
@@ -147,7 +153,7 @@ export default function MedicinePage() {
               <div>
                 <h3 className="text-sm font-semibold text-foreground mb-1">Precautions</h3>
                 <ul className="space-y-1">
-                  {result.precautions?.map((p: string) => (
+                  {getCleanArray(result.precautions).map((p: string) => (
                     <li key={p} className="flex items-start gap-2 text-sm text-muted-foreground">
                       <Info className="h-3.5 w-3.5 text-info mt-0.5 flex-shrink-0" /> {p}
                     </li>

@@ -119,7 +119,7 @@ export default function ResultsPage() {
               <span className="text-warning"> Murmur activity detected during systolic phase.</span>
             )}
           </p>
-          <HeartSoundWaveformChart condition={latestResult.condition} riskScore={latestResult.riskScore} />
+          <HeartSoundWaveformChart condition={latestResult.condition} riskScore={latestResult.riskScore} realData={latestResult.pcgData} />
           <div className="flex items-center gap-6 mt-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <span className="w-3 h-0.5 bg-primary inline-block rounded" /> PCG Signal
@@ -141,7 +141,7 @@ export default function ResultsPage() {
               <span className="text-warning"> Elevated high-frequency components indicate abnormal valve activity.</span>
             )}
           </p>
-          <FrequencySpectrumChart condition={latestResult.condition} riskScore={latestResult.riskScore} />
+          <FrequencySpectrumChart condition={latestResult.condition} riskScore={latestResult.riskScore} realData={latestResult.spectrumData} />
           <div className="flex items-center gap-6 mt-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <span className="w-3 h-0.5 bg-primary inline-block rounded" /> Patient Signal

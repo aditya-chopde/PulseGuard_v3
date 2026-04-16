@@ -71,6 +71,8 @@ export const createScreening = async (req, res, next) => {
             severity: aiResult.severity,
             riskScore: riskScore,
             confidence: confidence,
+            pcgData: aiResult.pcg_data || [],
+            spectrumData: aiResult.spectrum_data || [],
             features
         });
 

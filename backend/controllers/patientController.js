@@ -73,11 +73,11 @@ export const createAndAssignPatient = async (req, res, next) => {
         };
         const details = await PatientDetail.create(patientData);
 
-        // Create mapping
         const mapping = await DoctorPatient.create({
             doctorId: req.user._id,
             patientId: newUser._id,
-            status: 'accepted'
+            status: 'accepted',
+            requestedBy: req.user._id
         });
 
         res.status(201).json({ 

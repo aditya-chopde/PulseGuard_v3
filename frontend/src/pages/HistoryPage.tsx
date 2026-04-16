@@ -4,8 +4,8 @@ import { patientService } from '@/services/patientService';
 import { useAuth } from '@/hooks/useAuth';
 import SeverityBadge from '@/components/SeverityBadge';
 import RiskTrendChart from '@/components/charts/RiskTrendChart';
-import PCGChart from '@/components/charts/PCGChart';
-import SpectrumChart from '@/components/charts/SpectrumChart';
+import HeartSoundWaveformChart from '@/components/charts/HeartSoundWaveformChart';
+import FrequencySpectrumChart from '@/components/charts/FrequencySpectrumChart';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { motion } from 'framer-motion';
 import { History } from 'lucide-react';
@@ -154,8 +154,14 @@ export default function HistoryPage() {
 
                  {/* Charts */}
                  <div className="grid lg:grid-cols-2 gap-4">
-                    <PCGChart riskScore={selectedScreening.riskScore} />
-                    <SpectrumChart riskScore={selectedScreening.riskScore} />
+                    <div className="glass-card p-4">
+                      <h3 className="text-sm font-semibold text-foreground mb-4">Phonocardiogram (PCG)</h3>
+                      <HeartSoundWaveformChart condition={selectedScreening.condition} riskScore={selectedScreening.riskScore} realData={selectedScreening.pcgData} />
+                    </div>
+                    <div className="glass-card p-4">
+                      <h3 className="text-sm font-semibold text-foreground mb-4">Frequency Spectrum</h3>
+                      <FrequencySpectrumChart condition={selectedScreening.condition} riskScore={selectedScreening.riskScore} realData={selectedScreening.spectrumData} />
+                    </div>
                  </div>
 
                  {/* Doctor Remarks */}

@@ -4,11 +4,32 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 interface FrequencySpectrumChartProps {
   condition: string;
   riskScore: number;
+  realData?: number[];
 }
 
-export default function FrequencySpectrumChart({ condition, riskScore }: FrequencySpectrumChartProps) {
+export default function FrequencySpectrumChart({ condition, riskScore, realData }: FrequencySpectrumChartProps) {
   const data = useMemo(() => {
     const points: { freq: number; power: number; baseline: number }[] = [];
+    
+    // If we have actual extracted FFT array from the backend
+    if (realData && realData.length > 0) {
+        for (let i = 0; i < realData.length; i++) {
+             const freq = 20 + i * 15.6; // 50 bins from 20 to 800 Hz
+             const normalized = i / realData.length;
+             
+             // Approximate baseline normal
+             const baseline = Math.exp(-((normalized - 0.1) ** 2) / 0.01) * 0.8
+               + Math.exp(-((normalized - 0.25) ** 2) / 0.02) * 0.5;
+             
+             points.push({
+                 freq: Math.round(freq),
+                 power: Math.round(realData[i] * 1000) / 1000,
+                 baseline: Math.round(baseline * 1000) / 1000
+             });
+        }
+        return points;
+    }
+
     const abnormality = riskScore / 100;
 
     for (let i = 0; i < 50; i++) {
@@ -40,7 +61,7 @@ export default function FrequencySpectrumChart({ condition, riskScore }: Frequen
       });
     }
     return points;
-  }, [condition, riskScore]);
+  }, [condition, riskScore, realData]);
 
   return (
     <ResponsiveContainer width="100%" height={220}>

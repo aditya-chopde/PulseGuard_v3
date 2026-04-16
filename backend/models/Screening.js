@@ -37,6 +37,14 @@ const screeningSchema = new mongoose.Schema({
         type: Number, // 0-100 mapped from 'probability'
         required: true,
     },
+    pcgData: {
+        type: [Number],
+        default: []
+    },
+    spectrumData: {
+        type: [Number],
+        default: []
+    },
     features: [{
         name: String,
         contribution: Number,

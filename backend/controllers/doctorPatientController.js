@@ -23,7 +23,8 @@ export const assignPatient = async (req, res, next) => {
 
         const mapping = await DoctorPatient.create({
             doctorId,
-            patientId
+            patientId,
+            requestedBy: doctorId
         });
 
         res.status(201).json({ success: true, data: mapping });

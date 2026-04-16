@@ -130,21 +130,30 @@ export const generateReport = async (req, res, next) => {
         
         let pathStr = `M 60 ${pcgY}`;
         const isHighRisk = screening.riskScore > 65;
-        for (let x = 0; x < 470; x++) {
-           const t = x * (isHighRisk ? 0.08 : 0.06);
-           let py = pcgY;
-           const beatPosition = t % 20;
-           if (beatPosition < 2) {
-               py -= Math.sin(beatPosition * Math.PI) * 20 * (isHighRisk ? 1.4 : 1);
-           } else if (beatPosition > 5 && beatPosition < 6.5) {
-               py += Math.sin((beatPosition - 5) * Math.PI * 1.5) * 12;
-           }
-           if (isHighRisk) {
-               py += (Math.random() - 0.5) * 6;
-           } else {
-               py += (Math.random() - 0.5) * 2;
-           }
-           pathStr += ` L ${60 + x} ${py}`;
+        if (screening.pcgData && screening.pcgData.length > 0) {
+            const dataLen = screening.pcgData.length;
+            const step = 470 / Math.max(1, dataLen - 1);
+            for (let i = 0; i < dataLen; i++) {
+                let py = pcgY - (screening.pcgData[i] * 35); // Scale amplitude visually
+                pathStr += ` L ${60 + i * step} ${py}`;
+            }
+        } else {
+            for (let x = 0; x < 470; x++) {
+               const t = x * (isHighRisk ? 0.08 : 0.06);
+               let py = pcgY;
+               const beatPosition = t % 20;
+               if (beatPosition < 2) {
+                   py -= Math.sin(beatPosition * Math.PI) * 20 * (isHighRisk ? 1.4 : 1);
+               } else if (beatPosition > 5 && beatPosition < 6.5) {
+                   py += Math.sin((beatPosition - 5) * Math.PI * 1.5) * 12;
+               }
+               if (isHighRisk) {
+                   py += (Math.random() - 0.5) * 6;
+               } else {
+                   py += (Math.random() - 0.5) * 2;
+               }
+               pathStr += ` L ${60 + x} ${py}`;
+            }
         }
         doc.path(pathStr).stroke();
         y += 115;
@@ -153,14 +162,24 @@ export const generateReport = async (req, res, next) => {
         doc.rect(50, y, 495, 100).lineWidth(1).stroke('#ddd');
         doc.fill('#1a1a2e').fontSize(10).font('Helvetica-Bold').text('FREQUENCY SPECTRUM ANALYSIS', 60, y + 10);
         
-        const bars = 70;
-        const barWidth = 470 / bars - 1;
         doc.fill(isHighRisk ? '#e53935' : '#1a73e8');
-        for (let i = 0; i < bars; i++) {
-           const normalizeI = i / bars;
-           const bellCurve = Math.exp(-Math.pow((normalizeI - 0.5) * 4, 2)) * 50;
-           const h = isHighRisk ? (Math.random() * 40 + bellCurve * 0.5 + 10) : (bellCurve + Math.random() * 10 + 5);
-           doc.rect(60 + i * (barWidth + 1), y + 90 - h, barWidth, h).fill();
+        
+        if (screening.spectrumData && screening.spectrumData.length > 0) {
+            const bars = screening.spectrumData.length;
+            const barWidth = 470 / bars - 1;
+            for (let i = 0; i < bars; i++) {
+                const h = Math.max(1, screening.spectrumData[i] * 80);
+                doc.rect(60 + i * (barWidth + 1), y + 90 - h, barWidth, h).fill();
+            }
+        } else {
+            const bars = 70;
+            const barWidth = 470 / bars - 1;
+            for (let i = 0; i < bars; i++) {
+               const normalizeI = i / bars;
+               const bellCurve = Math.exp(-Math.pow((normalizeI - 0.5) * 4, 2)) * 50;
+               const h = isHighRisk ? (Math.random() * 40 + bellCurve * 0.5 + 10) : (bellCurve + Math.random() * 10 + 5);
+               doc.rect(60 + i * (barWidth + 1), y + 90 - h, barWidth, h).fill();
+            }
         }
         y += 115;
 
