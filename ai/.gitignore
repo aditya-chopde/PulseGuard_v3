@@ -1,3 +1,5 @@
 dataset
 model.py
 pulseguard_model.pkl
+.venv
+__pycache__
