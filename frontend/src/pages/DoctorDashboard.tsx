@@ -372,8 +372,8 @@ export default function DoctorDashboard() {
                 </motion.div>
 
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="space-y-4">
-                  <PCGChart riskScore={latest?.riskScore || 50} />
-                  <SpectrumChart riskScore={latest?.riskScore || 50} />
+                  {/* <PCGChart riskScore={latest?.riskScore || 50} /> */}
+                  {/*  <SpectrumChart riskScore={latest?.riskScore || 50} /> */}
                 </motion.div>
               </div>
 
@@ -462,7 +462,7 @@ export default function DoctorDashboard() {
             </div>
 
             {/* Patients Table */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-card overflow-hidden">
+            {/* <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-card overflow-hidden">
               <div className="px-5 py-3 border-b border-border flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                   <Users className="h-4 w-4 text-primary" /> All Patients
@@ -519,7 +519,7 @@ export default function DoctorDashboard() {
                   </tbody>
                 </table>
               </div>
-            </motion.div>
+            </motion.div> */}
           </>
         ) : (
           <div className="glass-card p-10 text-center flex flex-col items-center justify-center border-dashed">

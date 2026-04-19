@@ -1,6 +1,10 @@
 import ffmpeg from 'fluent-ffmpeg';
+import ffmpegStatic from 'ffmpeg-static';
 import path from 'path';
 import fs from 'fs';
+
+// Use the downloaded static ffmpeg binary
+ffmpeg.setFfmpegPath(ffmpegStatic);
 
 /**
  * Convert any audio file to WAV format (16kHz, mono) for AI processing.

@@ -12,7 +12,7 @@ export const protect = async (req, res, next) => {
     }
 
     if (!token) {
-        return res.status(401).json({ success: false, error: 'Not authorized to access this route' });
+        return res.status(401).json({ success: false, error: 'No token provided. Not authorized to access this route' });
     }
 
     try {
@@ -25,6 +25,7 @@ export const protect = async (req, res, next) => {
 
         next();
     } catch (err) {
+        console.error('Auth Middleware Error:', err.message);
         return res.status(401).json({ success: false, error: 'Not authorized to access this route' });
     }
 };

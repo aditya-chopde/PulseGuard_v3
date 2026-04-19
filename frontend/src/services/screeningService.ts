@@ -2,11 +2,7 @@ import api from './api';
 
 export const screeningService = {
   submitScreening: async (formData: FormData) => {
-    const response = await api.post('/screenings', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    const response = await api.post('/screenings', formData);
     return response.data;
   },
 

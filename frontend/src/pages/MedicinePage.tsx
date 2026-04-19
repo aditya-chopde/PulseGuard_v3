@@ -72,6 +72,8 @@ export default function MedicinePage() {
                 placeholder="e.g. Atenolol, Lisinopril..." 
                 value={query} 
                 onChange={(e) => { setQuery(e.target.value); setShowSuggestions(true); }} 
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()} 
                 className="bg-card border-border pl-11 h-12 rounded-xl shadow-sm text-base" 
               />
@@ -87,7 +89,7 @@ export default function MedicinePage() {
           {/* Suggestions Dropdown */}
           <AnimatePresence>
             {showSuggestions && query && suggestions.length > 0 && (
-              <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} className="absolute top-full left-0 right-[100px] mt-2 glass-card p-2 shadow-2xl border border-border rounded-xl">
+              <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} className="absolute top-full left-0 right-[100px] mt-2 glass-card p-2 shadow-2xl border border-border rounded-xl z-50">
                  {suggestions.map(s => (
                     <button key={s.name} onClick={() => { setQuery(s.name); setResult(s); setShowSuggestions(false); setNotFound(false); }}
                        className="w-full flex items-center justify-between p-2 hover:bg-muted/80 rounded-lg text-left transition-colors"
@@ -103,6 +105,11 @@ export default function MedicinePage() {
                        </div>
                     </button>
                  ))}
+              </motion.div>
+            )}
+            {showSuggestions && query && suggestions.length === 0 && (
+              <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} className="absolute top-full left-0 right-[100px] mt-2 glass-card p-4 shadow-2xl border border-border rounded-xl z-50 text-center text-sm text-muted-foreground">
+                 No medicines found matching "{query}"
               </motion.div>
             )}
           </AnimatePresence>

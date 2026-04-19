@@ -44,13 +44,19 @@ export const createScreening = async (req, res, next) => {
         }
 
         const optimizedPath = processedPath.replace(/\\/g, '/');
-        const audioUrl = `/${optimizedPath}`;
+        const filename = optimizedPath.split('/').pop();
+        const audioUrl = `/uploads/${filename}`;
 
         // 2. Transmit to Python AI Pipeline
         const aiResult = await analyzeAudio(optimizedPath);
         console.log("AI Result: ", aiResult)
 
         // Fallback checks
+        if (aiResult && aiResult.error) {
+            console.log("AI service returned an error:", aiResult.error);
+            return res.status(500).json({ success: false, error: aiResult.error });
+        }
+
         if (!aiResult || !aiResult.disease || !aiResult.severity) {
             console.log("Invalid response from AI service")
             return res.status(500).json({ success: false, error: 'Invalid response from AI service' });
