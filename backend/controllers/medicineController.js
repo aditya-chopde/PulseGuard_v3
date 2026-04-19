@@ -14,17 +14,24 @@ export const getMedicines = async (req, res, next) => {
 
 // @desc    Search medicines
 // @route   GET /medicines/search?q=
-// @access  Private (Doctor)
+// @access  Private
 export const searchMedicines = async (req, res, next) => {
     try {
-        const query = req.query.q;
-        if (!query) {
+        const raw = req.query.q;
+        if (!raw || raw.trim().length === 0) {
              return res.status(400).json({ success: false, error: 'Search query required' });
         }
 
-        // Case-insensitive regex search
-        const medicines = await Medicine.find({ 
-            name: { $regex: query, $options: 'i' } 
+        const query = raw.trim();
+        const regex = { $regex: query, $options: 'i' };
+
+        // Search across name, drugClass AND uses for broader matches
+        const medicines = await Medicine.find({
+            $or: [
+                { name: regex },
+                { drugClass: regex },
+                { uses: regex },
+            ]
         }).limit(20).sort('name');
 
         res.status(200).json({ success: true, count: medicines.length, data: medicines });
