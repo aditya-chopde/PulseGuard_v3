@@ -14,6 +14,7 @@ import { PhoneInput } from '@/components/PhoneInput';
 import { MultiInputField } from '@/components/MultiInputField';
 import { DoctorSelectDropdown } from '@/components/DoctorSelectDropdown';
 import { sendRequest } from '@/services/doctorPatientService';
+import { Shield } from 'lucide-react';
 
 type Step = 'role' | 'credentials' | 'details' | 'security';
 

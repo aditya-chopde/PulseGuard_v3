@@ -255,9 +255,9 @@ export default function DoctorDashboard() {
               <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
                 {filteredPatients.map(p => {
                   const l = p.screenings[p.screenings.length - 1];
-                  const isSelected = p.id === selectedPatient.id;
+                  const isSelected = (p._id || p.id) === (selectedPatient._id || selectedPatient.id);
                   return (
-                    <motion.button key={p.id} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                    <motion.button key={p._id || p.id} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
                       onClick={() => setSelectedPatient(p)}
                       className={`flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl transition-all border-2 ${
                         isSelected ? 'border-primary bg-primary/10 shadow-md shadow-primary/10' : 'border-transparent bg-muted/20 hover:bg-muted/40 hover:border-primary/15'
@@ -317,7 +317,7 @@ export default function DoctorDashboard() {
                     ))}
                   </div>
                   <div className="flex gap-2 mt-4">
-                    <Button size="sm" onClick={() => navigate(`/doctor/patient/${selectedPatient.id}`)}
+                    <Button size="sm" onClick={() => navigate(`/doctor/patient/${selectedPatient._id || selectedPatient.id}`)}
                       className="flex-1 gradient-primary text-primary-foreground border-0 text-xs h-9">
                       <Eye className="h-3 w-3 mr-1" /> Review
                     </Button>
@@ -340,9 +340,9 @@ export default function DoctorDashboard() {
                       {highRiskPatients.map(p => {
                         const l = p.screenings[p.screenings.length - 1];
                         return (
-                          <motion.div key={p.id} whileHover={{ scale: 1.01 }}
+                          <motion.div key={p._id || p.id} whileHover={{ scale: 1.01 }}
                             className="flex items-center justify-between p-2 rounded-lg bg-critical/5 border border-critical/10 cursor-pointer"
-                            onClick={() => { setSelectedPatient(p); navigate(`/doctor/patient/${p.id}`); }}
+                            onClick={() => { setSelectedPatient(p); navigate(`/doctor/patient/${p._id || p.id}`); }}
                           >
                             <div className="flex items-center gap-2">
                               <div className="w-6 h-6 rounded-full bg-critical/10 flex items-center justify-center">
@@ -484,7 +484,7 @@ export default function DoctorDashboard() {
                     {patients.map(p => {
                       const l = p.screenings[p.screenings.length - 1];
                       return (
-                        <tr key={p.id} className="border-b border-border last:border-0 hover:bg-muted/10 transition-colors">
+                        <tr key={p._id || p.id} className="border-b border-border last:border-0 hover:bg-muted/10 transition-colors">
                           <td className="px-4 py-2.5">
                             <div className="flex items-center gap-2">
                               <div className="w-7 h-7 rounded-full gradient-primary flex items-center justify-center">
@@ -509,7 +509,7 @@ export default function DoctorDashboard() {
                             }
                           </td>
                           <td className="px-4 py-2.5">
-                            <Button size="sm" variant="ghost" onClick={() => navigate(`/doctor/patient/${p.id}`)}>
+                            <Button size="sm" variant="ghost" onClick={() => navigate(`/doctor/patient/${p._id || p.id}`)}>
                               <Eye className="h-3.5 w-3.5" />
                             </Button>
                           </td>
