@@ -17,7 +17,7 @@ IMG = 224
 # -----------------------------
 # LOAD MODELS
 # -----------------------------
-with open("pulseguard_model.pkl", "rb") as f:
+with open("models/pulseguard_model.pkl", "rb") as f:
     model_data = pickle.load(f)
 
 binary_model = model_data["binary"]

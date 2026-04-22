@@ -65,10 +65,14 @@ export const createScreening = async (req, res, next) => {
             return res.status(500).json({ success: false, error: aiResult.error });
         }
 
-        if (!aiResult || !aiResult.disease || !aiResult.severity) {
+        if (!aiResult || !aiResult.condition) {
             console.log("Invalid response from AI service");
             return res.status(500).json({ success: false, error: 'Invalid response from AI service' });
         }
+
+        // Normalise severity — AI returns 'N/A' for Normal hearts, null on failures
+        const VALID_SEVERITIES = ['None', 'Mild', 'Moderate', 'Severe', 'N/A'];
+        const severity = VALID_SEVERITIES.includes(aiResult.severity) ? aiResult.severity : 'N/A';
 
         // 3. Compute Risk Metrics
         const riskScore = aiResult.risk_score !== undefined ? aiResult.risk_score : 50;
@@ -81,8 +85,8 @@ export const createScreening = async (req, res, next) => {
             initiatedBy: req.user._id,
             audioUrl,
             inputMethod,
-            condition: aiResult.disease,
-            severity: aiResult.severity,
+            condition: aiResult.condition,
+            severity: severity,
             riskScore: riskScore,
             confidence: confidence,
             pcgData: aiResult.pcg_data || [],

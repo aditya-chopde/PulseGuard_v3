@@ -1,6 +1,4 @@
 dataset
 model.py
-pulseguard_model.pkl
-pulseguard.pkl
 .venv
 __pycache__

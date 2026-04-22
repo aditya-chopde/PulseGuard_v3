@@ -5,7 +5,8 @@ import Medicine from '../models/Medicine.js';
 // @access  Private (Doctor)
 export const getMedicines = async (req, res, next) => {
     try {
-        const medicines = await Medicine.find().sort('name');
+        // Limited to 50 to prevent frontend crash
+        const medicines = await Medicine.find().limit(50).sort('name');
         res.status(200).json({ success: true, count: medicines.length, data: medicines });
     } catch (error) {
         next(error);
@@ -13,26 +14,37 @@ export const getMedicines = async (req, res, next) => {
 };
 
 // @desc    Search medicines
-// @route   GET /medicines/search?q=
+// @route   GET /medicines/search
 // @access  Private
 export const searchMedicines = async (req, res, next) => {
     try {
-        const raw = req.query.q;
-        if (!raw || raw.trim().length === 0) {
-             return res.status(400).json({ success: false, error: 'Search query required' });
+        const { q, drugClass, dosageForm, uses, ingredients } = req.query;
+        let p = {};
+        
+        let orConditions = [];
+
+        if (q && q.trim().length > 0) {
+            const terms = q.trim().split(' ').filter(Boolean);
+            terms.forEach(term => {
+                const regex = { $regex: term, $options: 'i' };
+                orConditions.push({ name: regex });
+                orConditions.push({ drugClass: regex });
+                orConditions.push({ uses: regex });
+                orConditions.push({ ingredients: regex });
+            });
+        }
+        
+        if (orConditions.length > 0) {
+            p.$or = orConditions;
         }
 
-        const query = raw.trim();
-        const regex = { $regex: query, $options: 'i' };
+        if (drugClass) p.drugClass = { $regex: drugClass, $options: 'i' };
+        if (dosageForm) p.dosageForm = { $regex: dosageForm, $options: 'i' };
+        if (uses) p.uses = { $regex: uses, $options: 'i' };
+        if (ingredients) p.ingredients = { $regex: ingredients, $options: 'i' };
 
-        // Search across name, drugClass AND uses for broader matches
-        const medicines = await Medicine.find({
-            $or: [
-                { name: regex },
-                { drugClass: regex },
-                { uses: regex },
-            ]
-        }).limit(20).sort('name');
+        // Return max 50 items
+        const medicines = await Medicine.find(p).limit(50).sort('name');
 
         res.status(200).json({ success: true, count: medicines.length, data: medicines });
     } catch (error) {

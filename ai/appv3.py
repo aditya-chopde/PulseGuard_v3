@@ -1,38 +1,3 @@
-# from fastapi import FastAPI, UploadFile, File
-# import shutil
-# import os
-# from model_utils import predict_audio
-
-# app = FastAPI(title="PulseGuard AI Service")
-
-# UPLOAD_DIR = "temp"
-# os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-
-# @app.get("/")
-# def home():
-#     return {"message": "PulseGuard AI Service Running 🚀"}
-
-
-# @app.post("/predict")
-# async def predict(file: UploadFile = File(...)):
-#     try:
-#         file_path = os.path.join(UPLOAD_DIR, file.filename)
-
-#         with open(file_path, "wb") as buffer:
-#             shutil.copyfileobj(file.file, buffer)
-
-#         result = predict_audio(file_path)
-
-#         os.remove(file_path)
-
-#         return result
-
-#     except Exception as e:
-#         return {"error": str(e)}
-
-
-# v3 code 
 # PulseGuard | main.py
 # FastAPI service — accepts a .wav upload and returns AI prediction results.
 # Author  : Abhishek Jadhav | GP Sadar, Nagpur
@@ -46,7 +11,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
 
-from model_utils_v3 import predict_audio, PulseGuardModel
+from model_utils import predict_audio, PulseGuardModel
 
 
 # ─── LIFESPAN — warm up the model once at startup ────────────────────────────

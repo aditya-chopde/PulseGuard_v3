@@ -26,7 +26,8 @@ const screeningSchema = new mongoose.Schema({
     },
     severity: {
         type: String,
-        enum: ['None', 'Mild', 'Moderate', 'Severe'],
+        enum: ['None', 'Mild', 'Moderate', 'Severe', 'N/A'],
+        default: 'N/A',
         required: true,
     },
     riskScore: {

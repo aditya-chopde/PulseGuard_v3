@@ -16,6 +16,13 @@ const medicineSchema = new mongoose.Schema({
     dosage: {
         type: String,
     },
+    dosageForm: {
+        type: String,
+    },
+    ingredients: {
+        type: [String],
+        default: []
+    },
     sideEffects: {
         type: [String],
         default: []

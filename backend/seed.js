@@ -22,9 +22,9 @@ const seedData = async () => {
 
         // 1. Doctors
         const doctors = [
-            { name: 'Dr. Gregory House', email: 'house@pulseguard.com', password: passwordHash, role: 'doctor' },
-            { name: 'Dr. John Watson', email: 'watson@pulseguard.com', password: passwordHash, role: 'doctor' },
-            { name: 'Dr. Alice Roberts', email: 'roberts@pulseguard.com', password: passwordHash, role: 'doctor' }
+            { name: 'Dr. Gregory House', email: 'house@pulseguard.com', password: passwordHash, role: 'doctor', phone: '1234567890', specialization: 'Cardiology' },
+            { name: 'Dr. John Watson', email: 'watson@pulseguard.com', password: passwordHash, role: 'doctor', phone: '0987654321', specialization: 'General Practice' },
+            { name: 'Dr. Alice Roberts', email: 'roberts@pulseguard.com', password: passwordHash, role: 'doctor', phone: '1122334455', specialization: 'Neurology' }
         ];
 
         let createdDoctors = [];
@@ -37,9 +37,9 @@ const seedData = async () => {
 
         // 2. Patients
         const patients = [
-            { user: { name: 'John Doe', email: 'johndoe@example.com', password: passwordHash, role: 'patient' }, details: { age: 45, gender: 'Male', height: 175, weight: 75, bloodGroup: 'O+', address: '123 Apple St, NY' } },
-            { user: { name: 'Jane Smith', email: 'janesmith@example.com', password: passwordHash, role: 'patient' }, details: { age: 52, gender: 'Female', height: 162, weight: 68, bloodGroup: 'A-', address: '456 Orange Blvd, CA' } },
-            { user: { name: 'Mike Johnson', email: 'mikej@example.com', password: passwordHash, role: 'patient' }, details: { age: 38, gender: 'Male', height: 180, weight: 85, bloodGroup: 'B+', address: '789 Banana Ct, TX' } }
+            { user: { name: 'John Doe', email: 'johndoe@example.com', password: passwordHash, role: 'patient', phone: '5556667777' }, details: { age: 45, gender: 'Male', height: 175, weight: 75, bloodGroup: 'O+', address: '123 Apple St, NY' } },
+            { user: { name: 'Jane Smith', email: 'janesmith@example.com', password: passwordHash, role: 'patient', phone: '8889990000' }, details: { age: 52, gender: 'Female', height: 162, weight: 68, bloodGroup: 'A-', address: '456 Orange Blvd, CA' } },
+            { user: { name: 'Mike Johnson', email: 'mikej@example.com', password: passwordHash, role: 'patient', phone: '3334445555' }, details: { age: 38, gender: 'Male', height: 180, weight: 85, bloodGroup: 'B+', address: '789 Banana Ct, TX' } }
         ];
 
         let createdPatients = [];
@@ -74,15 +74,15 @@ const seedData = async () => {
 
         // 4. Medicines
         const medicines = [
-            { name: 'Aspirin', drugClass: 'NSAID', uses: ['Pain relief', 'Fever', 'Inflammation'], dosage: '75mg - 325mg daily', sideEffects: ['Nausea', 'Heartburn'], precautions: ['Asthma', 'Bleeding disorders'] },
-            { name: 'Atorvastatin', drugClass: 'Statin', uses: ['Lower cholesterol', 'Prevent heart disease'], dosage: '10mg - 80mg daily', sideEffects: ['Muscle pain', 'Liver toxicity'], precautions: ['Liver disease', 'Pregnancy'] },
-            { name: 'Lisinopril', drugClass: 'ACE Inhibitor', uses: ['Hypertension', 'Heart failure'], dosage: '10mg - 40mg daily', sideEffects: ['Dry cough', 'Dizziness'], precautions: ['Kidney issues', 'Pregnancy'] },
-            { name: 'Metoprolol', drugClass: 'Beta Blocker', uses: ['Angina', 'Hypertension', 'Arrhythmia'], dosage: '25mg - 100mg daily', sideEffects: ['Fatigue', 'Bradycardia'], precautions: ['Asthma', 'Heart block'] }
+            { name: 'Aspirin', drugClass: 'NSAID', uses: ['Pain relief', 'Fever', 'Inflammation', 'Angina'], dosage: '75mg - 325mg daily', dosageForm: 'Tablet', ingredients: ['Acetylsalicylic acid'], sideEffects: ['Nausea', 'Heartburn'], precautions: ['Asthma', 'Bleeding disorders'] },
+            { name: 'Atorvastatin', drugClass: 'Statin', uses: ['Lower cholesterol', 'Prevent heart disease'], dosage: '10mg - 80mg daily', dosageForm: 'Tablet', ingredients: ['Atorvastatin calcium'], sideEffects: ['Muscle pain', 'Liver toxicity'], precautions: ['Liver disease', 'Pregnancy'] },
+            { name: 'Lisinopril', drugClass: 'ACE Inhibitor', uses: ['Hypertension', 'Heart failure'], dosage: '10mg - 40mg daily', dosageForm: 'Tablet', ingredients: ['Lisinopril dihydrate'], sideEffects: ['Dry cough', 'Dizziness'], precautions: ['Kidney issues', 'Pregnancy'] },
+            { name: 'Metoprolol', drugClass: 'Beta Blocker', uses: ['Angina', 'Hypertension', 'Arrhythmia'], dosage: '25mg - 100mg daily', dosageForm: 'Capsule', ingredients: ['Metoprolol succinate'], sideEffects: ['Fatigue', 'Bradycardia'], precautions: ['Asthma', 'Heart block'] },
+            { name: 'Amlodipine', drugClass: 'Calcium Channel Blocker', uses: ['Hypertension', 'Angina'], dosage: '5mg - 10mg daily', dosageForm: 'Tablet', ingredients: ['Amlodipine besylate'], sideEffects: ['Swelling', 'Fatigue'], precautions: ['Liver disease', 'Heart failure'] }
         ];
 
         for (const med of medicines) {
-            let existingMed = await Medicine.findOne({ name: med.name });
-            if (!existingMed) await Medicine.create(med);
+            await Medicine.findOneAndUpdate({ name: med.name }, med, { upsert: true, new: true });
         }
         console.log('Medicines seeded.');
 

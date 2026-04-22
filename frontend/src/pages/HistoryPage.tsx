@@ -114,7 +114,7 @@ export default function HistoryPage() {
       </div>
 
       <Dialog open={!!selectedScreening} onOpenChange={(open) => !open && setSelectedScreening(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto w-full">
+        <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto w-[95vw]">
           <DialogHeader>
             <DialogTitle>Screening Analysis Results</DialogTitle>
             <DialogDescription>
@@ -153,13 +153,13 @@ export default function HistoryPage() {
                  </div>
 
                  {/* Charts */}
-                 <div className="grid lg:grid-cols-2 gap-4">
-                    <div className="glass-card p-4">
-                      <h3 className="text-sm font-semibold text-foreground mb-4">Phonocardiogram (PCG)</h3>
+                 <div className="space-y-6 mt-6">
+                    <div className="glass-card p-6">
+                      <h3 className="text-lg font-semibold text-foreground mb-4">Phonocardiogram (PCG) Signal</h3>
                       <HeartSoundWaveformChart condition={selectedScreening.condition} riskScore={selectedScreening.riskScore} realData={selectedScreening.pcgData} />
                     </div>
-                    <div className="glass-card p-4">
-                      <h3 className="text-sm font-semibold text-foreground mb-4">Frequency Spectrum</h3>
+                    <div className="glass-card p-6">
+                      <h3 className="text-lg font-semibold text-foreground mb-4">Frequency Spectrum Analysis</h3>
                       <FrequencySpectrumChart condition={selectedScreening.condition} riskScore={selectedScreening.riskScore} realData={selectedScreening.spectrumData} />
                     </div>
                  </div>

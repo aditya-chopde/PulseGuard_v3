@@ -1,277 +1,370 @@
-import { useState, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import DashboardLayout from '@/components/DashboardLayout';
 import { medicineService } from '@/services/medicineService';
 import { Input } from '@/components/ui/input';
-import { Search, Pill, AlertCircle, Info, X, Loader2 } from 'lucide-react';
+import { Search, Pill, AlertCircle, Info, X, Loader2, Filter, Check, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
 
-const POPULAR = [
-  'Aspirin', 'Atenolol', 'Lisinopril', 'Metformin',
-  'Amlodipine', 'Atorvastatin',
+// Helper
+const getCleanArray = (data: any): string[] => {
+  if (!data) return [];
+  const str = Array.isArray(data) ? data.join(',') : String(data);
+  return str.replace(/[\[\]"']/g, '').split(',').map(s => s.trim()).filter(Boolean);
+};
+
+// Highlighter Component
+const HighlightText = ({ text, highlights }: { text: string, highlights: string[] }) => {
+  if (!text || !highlights.length) return <>{text}</>;
+  
+  const sortedHighlights = [...highlights].sort((a, b) => b.length - a.length);
+  const regex = new RegExp(`(${sortedHighlights.join('|')})`, 'gi');
+  const parts = text.split(regex);
+  
+  return (
+    <>
+      {parts.map((part, i) => 
+        sortedHighlights.some(h => h.toLowerCase() === part.toLowerCase()) 
+          ? <mark key={i} className="bg-warning/30 text-warning px-0.5 rounded-sm font-semibold bg-transparent">{part}</mark>
+          : <span key={i}>{part}</span>
+      )}
+    </>
+  );
+};
+
+type FilterType = { category: string; value: string };
+
+const COMMON_DRUG_CLASSES = [
+  'ACE Inhibitor', 'Analgesic/Antipyretic', 'Antibiotic', 'Anticoagulant', 
+  'Anticonvulsant', 'Antidepressant', 'Antidiabetic (Biguanide)', 
+  'Antihistamine', 'Antihypertensive (Beta-Blocker)', 'NSAID', 'Statin'
+];
+
+const COMMON_DOSAGE_FORMS = [
+  'Capsule', 'Tablet', 'Injection', 'Syrup', 'Cream', 'Ointment', 'Drops'
 ];
 
 export default function MedicinePage() {
   const [query, setQuery] = useState('');
-  const [selectedMedicine, setSelectedMedicine] = useState<any>(null);
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [activeFilters, setActiveFilters] = useState<FilterType[]>([]);
   const [isFocused, setIsFocused] = useState(false);
   const isMouseDownInDropdown = useRef(false);
 
-  const getCleanArray = (data: any): string[] => {
-    if (!data) return [];
-    const str = Array.isArray(data) ? data.join(',') : String(data);
-    return str.replace(/[\[\]"']/g, '').split(',').map(s => s.trim()).filter(Boolean);
-  };
+  // Debounce input for smooth UX
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedQuery(query.toLowerCase().trim());
+    }, 400); // Increased debounce to 400ms since it makes network requests
+    return () => clearTimeout(handler);
+  }, [query]);
 
-  const { data: suggestions = [], isFetching, isError } = useQuery({
-    queryKey: ['medicines-search', query.trim().toLowerCase()],
-    queryFn: () => medicineService.searchMedicines(query.trim()),
-    enabled: query.trim().length > 1,
+  // Construct search parameters for the backend
+  const searchParams = useMemo(() => {
+    const params: any = { q: debouncedQuery };
+    activeFilters.forEach(f => {
+      if (f.category === 'Drug Class') params.drugClass = f.value;
+      if (f.category === 'Dosage Form') params.dosageForm = f.value;
+      if (f.category === 'Disease/Uses') params.uses = f.value;
+      if (f.category === 'Ingredients') params.ingredients = f.value;
+    });
+    return params;
+  }, [debouncedQuery, activeFilters]);
+
+  // Fetch medicines dynamically from the backend using Server-Side Search
+  const { data: filteredMedicines = [], isLoading, isFetching } = useQuery({
+    queryKey: ['medicines', 'search', searchParams],
+    queryFn: () => medicineService.searchMedicines(searchParams),
     staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-    retry: 1,
   });
 
-  const handleSelect = (medicine: any) => {
-    setSelectedMedicine(medicine);
-    setQuery(medicine.name);
-    setIsFocused(false);
-    isMouseDownInDropdown.current = false;
+  // Since we rely on server-side search, we use predefined common dropdowns for Class and Form
+  const filterOptions = useMemo(() => ({
+    'Drug Class': COMMON_DRUG_CLASSES.sort(),
+    'Dosage Form': COMMON_DOSAGE_FORMS.sort(),
+  }), []);
+
+  // Autocomplete Suggestions logic - We now use the CURRENTLY RETURNED search items
+  const suggestions = useMemo(() => {
+    if (debouncedQuery.length < 2) return null;
+    if (!filteredMedicines.length) return null;
+    
+    const meds = filteredMedicines.filter((m: any) => m.name.toLowerCase().includes(debouncedQuery)).slice(0, 3).map((m: any) => m.name);
+    
+    const exactUses = new Set<string>();
+    const exactIng = new Set<string>();
+    
+    filteredMedicines.forEach((m: any) => {
+       getCleanArray(m.uses).forEach(u => {
+           if (u.toLowerCase().includes(debouncedQuery)) exactUses.add(u);
+       });
+       getCleanArray(m.ingredients).forEach(i => {
+           if (i.toLowerCase().includes(debouncedQuery)) exactIng.add(i);
+       });
+    });
+    
+    return {
+       'Medicines': Array.from(meds),
+       'Diseases / Conditions': Array.from(exactUses).slice(0, 3),
+       'Active Ingredients': Array.from(exactIng).slice(0, 3)
+    };
+  }, [debouncedQuery, filteredMedicines]);
+
+  // Handlers
+  const toggleFilter = (category: string, value: string) => {
+    setActiveFilters(prev => {
+      const exists = prev.find(f => f.category === category && f.value === value);
+      if (exists) return prev.filter(f => !(f.category === category && f.value === value));
+      return [...prev, { category, value }];
+    });
   };
 
-  const handleClear = () => {
-    setQuery('');
-    setSelectedMedicine(null);
-    setIsFocused(false);
-  };
-
-  const handlePopularClick = async (name: string) => {
-    setQuery(name);
-    try {
-      const results = await medicineService.searchMedicines(name);
-      if (results?.length > 0) {
-        setSelectedMedicine(results[0]);
-      }
-    } catch {
-      // ignore
+  const handleAutocompleteSelect = (category: string, value: string) => {
+    if (category === 'Medicines') {
+        setQuery(value);
+    } else {
+        const filterCatMap: Record<string, string> = {
+            'Diseases / Conditions': 'Disease/Uses',
+            'Active Ingredients': 'Ingredients'
+        };
+        const actualCat = filterCatMap[category];
+        if (actualCat) {
+            const exists = activeFilters.find(f => f.category === actualCat && f.value === value);
+            if (!exists) setActiveFilters(prev => [...prev, { category: actualCat, value }]);
+            setQuery(''); // clear typed text
+        }
     }
     setIsFocused(false);
   };
 
-  const showDropdown = isFocused && query.trim().length > 1 && !selectedMedicine;
+  const activeTerms = debouncedQuery.split(' ').filter(Boolean);
+
+  if (isLoading && !filteredMedicines.length) return (
+    <DashboardLayout>
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-10 w-10 text-primary animate-spin" />
+      </div>
+    </DashboardLayout>
+  );
 
   return (
     <DashboardLayout>
-      <div className="max-w-2xl mx-auto space-y-8">
+      <div className="max-w-3xl mx-auto space-y-6">
         <div className="text-center space-y-2 mt-4">
           <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
             <Pill className="h-8 w-8 text-primary" />
           </div>
           <h1 className="text-3xl font-bold text-foreground">Medicine Dictionary</h1>
           <p className="text-muted-foreground text-sm">
-            Search for cardiac medications for educational insights and dosages.
+            Search dynamically by name, disease, ingredients, or multi-keywords.
           </p>
         </div>
 
-        {/* Search Box */}
+        {/* Search Bar Block */}
         <div className="relative" style={{ zIndex: 50 }}>
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
-              placeholder="e.g. Atenolol, Lisinopril, Aspirin…"
+              placeholder="Search e.g. 'hypertension atenolol' or 'amlodipine'..."
               value={query}
-              onChange={e => {
-                setQuery(e.target.value);
-                if (selectedMedicine) setSelectedMedicine(null);
-              }}
+              onChange={e => setQuery(e.target.value)}
               onFocus={() => setIsFocused(true)}
               onBlur={() => {
                 if (!isMouseDownInDropdown.current) setIsFocused(false);
               }}
-              onKeyDown={e => {
-                if (e.key === 'Escape') handleClear();
-              }}
-              className="bg-card border-border pl-11 pr-11 h-12 rounded-xl shadow-sm text-base"
+              className="bg-card border-border pl-11 pr-11 h-14 rounded-xl shadow-sm text-base focus-visible:ring-primary/30"
               autoComplete="off"
-              autoCorrect="off"
-              spellCheck={false}
             />
-            {isFetching && (
-              <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground animate-spin" />
-            )}
-            {query && !isFetching && (
+            {query && (
               <button
                 onMouseDown={e => e.preventDefault()}
-                onClick={handleClear}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                aria-label="Clear search"
+                onClick={() => setQuery('')}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground bg-muted p-1 rounded-full"
               >
-                <X className="h-4 w-4" />
+                <X className="h-3 w-3" />
               </button>
             )}
           </div>
 
-          {/* Suggestions Dropdown */}
+          {/* Grouped Autocomplete Suggestions */}
           <AnimatePresence>
-            {showDropdown && (
+            {isFocused && suggestions && Object.values(suggestions).some(arr => arr.length > 0) && (
               <motion.div
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -5 }}
-                transition={{ duration: 0.12 }}
-                className="absolute top-full left-0 right-0 mt-2 glass-card shadow-2xl border border-border rounded-xl overflow-hidden"
+                initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }}
+                className="absolute top-full left-0 right-0 mt-2 glass-card shadow-2xl border border-border rounded-xl overflow-hidden py-2"
                 style={{ zIndex: 9999 }}
                 onMouseDown={() => { isMouseDownInDropdown.current = true; }}
                 onMouseUp={() => { isMouseDownInDropdown.current = false; }}
               >
-                {isError && (
-                  <div className="p-3 text-center text-xs text-destructive">
-                    Failed to search. Please try again.
-                  </div>
-                )}
-
-                {!isError && isFetching && (
-                  <div className="p-3 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching…
-                  </div>
-                )}
-
-                {!isError && !isFetching && suggestions.length > 0 && (
-                  <div className="max-h-60 overflow-y-auto p-2">
-                    {suggestions.map((s: any) => (
-                      <button
-                        key={s._id || s.name}
-                        onMouseDown={e => e.preventDefault()}
-                        onClick={() => handleSelect(s)}
-                        className="w-full flex items-center gap-3 p-2.5 hover:bg-muted/80 rounded-lg text-left transition-colors"
-                      >
-                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          <Pill className="h-4 w-4 text-primary" />
-                        </div>
-                        <div>
-                          <div className="text-sm font-semibold text-foreground">{s.name}</div>
-                          {s.drugClass && (
-                            <div className="text-[10px] text-muted-foreground">{s.drugClass}</div>
-                          )}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {!isError && !isFetching && suggestions.length === 0 && (
-                  <div className="p-3 text-center text-xs text-muted-foreground">
-                    No medicines found for "{query}"
-                  </div>
-                )}
+                {Object.entries(suggestions).map(([groupName, items]) => {
+                  if (!items.length) return null;
+                  return (
+                    <div key={groupName} className="mb-2 last:mb-0">
+                      <div className="px-4 py-1 text-[10px] font-black text-muted-foreground uppercase tracking-wider bg-muted/20">
+                        {groupName}
+                      </div>
+                      {items.map((item) => (
+                        <button
+                          key={item}
+                          onMouseDown={e => e.preventDefault()}
+                          onClick={() => handleAutocompleteSelect(groupName, item)}
+                          className="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-muted/80 transition-colors flex items-center gap-2"
+                        >
+                          <Search className="h-3 w-3 text-muted-foreground" />
+                          <HighlightText text={item} highlights={activeTerms} />
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })}
               </motion.div>
             )}
-
           </AnimatePresence>
         </div>
 
-        {/* Popular Searches — shown when nothing is selected */}
-        <AnimatePresence>
-          {!selectedMedicine && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="glass-card p-6 border-dashed opacity-80"
-            >
-              <h3 className="text-sm font-medium text-muted-foreground mb-3">Popular Searches</h3>
-              <div className="flex flex-wrap gap-2">
-                {POPULAR.map(name => (
-                  <button
-                    key={name}
-                    onClick={() => handlePopularClick(name)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors border border-border"
-                  >
-                    {name}
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Result Card */}
-        <AnimatePresence mode="wait">
-          {selectedMedicine && (
-            <motion.div
-              key={selectedMedicine._id || selectedMedicine.name}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="glass-card p-6 space-y-4"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <h2 className="text-xl font-bold text-foreground">{selectedMedicine.name}</h2>
-                  {selectedMedicine.drugClass && (
-                    <span className="text-sm text-primary font-medium">{selectedMedicine.drugClass}</span>
-                  )}
-                </div>
-                <button
-                  onClick={handleClear}
-                  className="text-muted-foreground hover:text-foreground mt-1"
-                  aria-label="Close"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-
-              {selectedMedicine.uses?.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-1">Uses</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {getCleanArray(selectedMedicine.uses).join(', ')}
-                  </p>
-                </div>
-              )}
-
-              {selectedMedicine.dosage && (
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-1">Dosage</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedMedicine.dosage.replace(/["[\]]/g, '')}
-                  </p>
-                </div>
-              )}
-
-              {selectedMedicine.sideEffects?.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-1">Side Effects</h3>
-                  <div className="flex flex-wrap gap-1.5">
-                    {getCleanArray(selectedMedicine.sideEffects).map((se: string) => (
-                      <span key={se} className="px-2 py-0.5 rounded-full text-xs bg-warning/10 text-warning">
-                        {se}
-                      </span>
-                    ))}
+        {/* Compact Filters UI */}
+        <div className="flex flex-wrap items-center gap-2">
+           <Filter className="h-4 w-4 text-muted-foreground mr-1" />
+           {Object.entries(filterOptions).map(([catName, options]) => (
+              <Popover key={catName}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 border-border bg-card hover:bg-muted text-xs rounded-full">
+                    {catName} <ChevronDown className="h-3 w-3 ml-1.5 text-muted-foreground" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-2 rounded-xl" align="start">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2 px-1">Filter by {catName}</div>
+                  <div className="max-h-48 overflow-y-auto space-y-1">
+                    {options.map(opt => {
+                      const isSelected = activeFilters.some(f => f.category === catName && f.value === opt);
+                      return (
+                        <button
+                          key={opt}
+                          onClick={() => toggleFilter(catName, opt)}
+                          className="w-full flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-muted text-sm text-left transition-colors"
+                        >
+                          <span className={isSelected ? 'font-medium text-primary' : 'text-foreground'}>{opt}</span>
+                          {isSelected && <Check className="h-3.5 w-3.5 text-primary" />}
+                        </button>
+                      );
+                    })}
                   </div>
-                </div>
-              )}
+                </PopoverContent>
+              </Popover>
+           ))}
+        </div>
 
-              {selectedMedicine.precautions?.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-1">Precautions</h3>
-                  <ul className="space-y-1">
-                    {getCleanArray(selectedMedicine.precautions).map((p: string) => (
-                      <li key={p} className="flex items-start gap-2 text-sm text-muted-foreground">
-                        <Info className="h-3.5 w-3.5 text-info mt-0.5 flex-shrink-0" /> {p}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+        {/* Active Filter Chips */}
+        {activeFilters.length > 0 && (
+          <div className="flex flex-wrap gap-2 items-center bg-muted/30 p-2 rounded-xl border border-border">
+            <span className="text-xs text-muted-foreground mx-2 font-medium">Active Filters:</span>
+            {activeFilters.map(f => (
+              <span key={`${f.category}-${f.value}`} className="group flex items-center gap-1.5 px-2.5 py-1 bg-primary/10 text-primary border border-primary/20 rounded-full text-xs font-semibold cursor-default">
+                <span className="opacity-70 font-normal mr-0.5">{f.category}:</span> {f.value}
+                <button 
+                  onClick={() => toggleFilter(f.category, f.value)}
+                  className="hover:bg-primary/20 rounded-full p-0.5 transition-colors ml-1"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+            <button onClick={() => setActiveFilters([])} className="ml-auto text-xs text-muted-foreground hover:text-foreground px-2 py-1">Clear All</button>
+          </div>
+        )}
 
-              <div className="p-3 bg-muted/30 rounded-lg text-xs text-muted-foreground flex items-start gap-2">
-                <AlertCircle className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
-                This information is for educational purposes only. Always consult a healthcare professional.
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Results Mapping */}
+        {filteredMedicines.length === 0 ? (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card p-10 text-center border-dashed">
+             <AlertCircle className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+             <h3 className="text-lg font-semibold text-foreground">No matches found</h3>
+             <p className="text-sm text-muted-foreground mt-1">Try relaxing your filters or checking your spelling.</p>
+             <Button onClick={() => { setQuery(''); setActiveFilters([]); }} variant="outline" className="mt-4">Reset Search</Button>
+          </motion.div>
+        ) : (
+          <div className="space-y-4 pb-10">
+             <div className="flex justify-between items-center px-1">
+                <div className="text-xs text-muted-foreground">
+                    {filteredMedicines.length === 50 ? 'Top 50 medicines found' : `${filteredMedicines.length} medicines found`}
+                </div>
+                {isFetching && <Loader2 className="h-3.5 w-3.5 text-primary animate-spin" />}
+             </div>
+             
+             <AnimatePresence>
+               {filteredMedicines.map((med: any) => (
+                 <motion.div
+                   key={med._id || med.name}
+                   initial={{ opacity: 0, y: 10 }}
+                   animate={{ opacity: 1, y: 0 }}
+                   exit={{ opacity: 0, scale: 0.95 }}
+                   className="glass-card p-6 space-y-4"
+                 >
+                   <div>
+                     <h2 className="text-xl font-bold text-foreground">
+                        <HighlightText text={med.name} highlights={activeTerms} />
+                     </h2>
+                     <div className="flex gap-2 items-center mt-1 text-sm font-medium">
+                        {med.drugClass && <span className="text-primary"><HighlightText text={med.drugClass} highlights={activeTerms} /></span>}
+                        {med.dosageForm && <span className="text-muted-foreground border-l border-border pl-2"><HighlightText text={med.dosageForm} highlights={activeTerms} /></span>}
+                     </div>
+                   </div>
+
+                   {med.uses?.length > 0 && (
+                     <div>
+                       <h3 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-1.5"><Info className="h-3.5 w-3.5 text-muted-foreground" /> Uses & Conditions</h3>
+                       <p className="text-sm text-muted-foreground leading-relaxed">
+                         {getCleanArray(med.uses).map((u, i, arr) => (
+                           <span key={i}>
+                             <HighlightText text={u} highlights={activeTerms} />{i < arr.length - 1 ? ', ' : ''}
+                           </span>
+                         ))}
+                       </p>
+                     </div>
+                   )}
+
+                   {med.ingredients?.length > 0 && (
+                     <div>
+                       <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1.5"><Pill className="h-3.5 w-3.5 text-info" /> Active Ingredients</h3>
+                       <div className="flex flex-wrap gap-1.5">
+                         {getCleanArray(med.ingredients).map((ing: string) => (
+                           <span key={ing} className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-info/10 text-info border border-info/20 shadow-sm">
+                             <HighlightText text={ing} highlights={activeTerms} />
+                           </span>
+                         ))}
+                       </div>
+                     </div>
+                   )}
+
+                   <div className="grid sm:grid-cols-2 gap-4 mt-2">
+                     {med.sideEffects?.length > 0 && (
+                       <div className="p-3 rounded-lg bg-warning/5 border border-warning/10">
+                         <h3 className="text-[10px] font-bold uppercase tracking-wider text-warning mb-1.5 flex items-center gap-1">
+                           <AlertCircle className="h-3 w-3" /> Side Effects
+                         </h3>
+                         <div className="flex flex-wrap gap-1">
+                           {getCleanArray(med.sideEffects).map((se: string) => (
+                             <span key={se} className="text-xs text-muted-foreground bg-background border border-border px-1.5 py-0.5 rounded">
+                               {se}
+                             </span>
+                           ))}
+                         </div>
+                       </div>
+                     )}
+                     
+                     {med.dosage && (
+                       <div className="p-3 rounded-lg bg-muted/20 border border-border">
+                         <h3 className="text-[10px] font-bold uppercase tracking-wider text-foreground/70 mb-1.5">Dosage Guidelines</h3>
+                         <p className="text-xs text-foreground font-medium">{med.dosage.replace(/["[\]]/g, '')}</p>
+                       </div>
+                     )}
+                   </div>
+                 </motion.div>
+               ))}
+             </AnimatePresence>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );
