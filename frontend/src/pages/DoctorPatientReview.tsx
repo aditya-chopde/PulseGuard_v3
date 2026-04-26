@@ -46,7 +46,7 @@ export default function DoctorPatientReview() {
     fetchPatient();
   }, [patientId]);
 
-  const latest = patient?.screenings?.[patient.screenings.length - 1];
+  const latest = patient?.screenings?.[0];
 
   const handleSaveRemarks = async () => {
     const screeningId = latest?._id || latest?.id;
@@ -173,7 +173,7 @@ export default function DoctorPatientReview() {
                   </tr>
                 </thead>
                 <tbody>
-                  {[...patient.screenings].reverse().map((s: any) => (
+                  {[...patient.screenings].map((s: any) => (
                     <tr key={s._id || s.id} onClick={() => setSelectedScreening(s)} className="cursor-pointer border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
                       <td className="px-6 py-4 text-sm text-foreground whitespace-nowrap">{new Date(s.createdAt || s.date).toLocaleDateString('en-IN')}</td>
                       <td className="px-6 py-4 text-sm font-medium text-foreground whitespace-nowrap">{s.condition}</td>

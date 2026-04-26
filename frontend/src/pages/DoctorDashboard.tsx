@@ -72,7 +72,7 @@ export default function DoctorDashboard() {
     });
   }, []);
 
-  const latest = selectedPatient?.screenings?.[selectedPatient.screenings.length - 1];
+  const latest = selectedPatient?.screenings?.[0];
 
   // Screening state
   const [screeningOpen, setScreeningOpen] = useState(false);
@@ -89,9 +89,9 @@ export default function DoctorDashboard() {
 
   const handleScreeningComplete = (result: PredictionResult) => {
     setPatientsData(prev => prev.map(p =>
-      p.id === selectedPatient.id && p._id === selectedPatient._id ? { ...p, screenings: [...(p.screenings || []), result] } : p
+      p.id === selectedPatient.id && p._id === selectedPatient._id ? { ...p, screenings: [result, ...(p.screenings || [])] } : p
     ));
-    setSelectedPatient((prev: any) => ({ ...prev, screenings: [...(prev.screenings || []), result] }));
+    setSelectedPatient((prev: any) => ({ ...prev, screenings: [result, ...(prev.screenings || [])] }));
     setScreeningOpen(false);
   };
 
@@ -119,7 +119,7 @@ export default function DoctorDashboard() {
     : patients;
 
   const highRiskPatients = patients.filter(p => {
-    const l = p.screenings[p.screenings.length - 1];
+    const l = p.screenings[0];
     return l && l.riskScore > 65;
   });
 
@@ -133,7 +133,7 @@ export default function DoctorDashboard() {
   const reviewedCount = patients.filter(p => p.reviewed).length;
   const pendingCount = patients.length - reviewedCount;
   const avgRisk = Math.round(patients.reduce((sum, p) => {
-    const l = p.screenings[p.screenings.length - 1];
+    const l = p.screenings[0];
     return sum + (l?.riskScore || 0);
   }, 0) / patients.length);
 
@@ -143,7 +143,7 @@ export default function DoctorDashboard() {
     { label: 'Reviewed', value: reviewedCount, icon: CheckCircle2, color: 'success', trend: `${pendingCount} pending`, trendUp: true },
     { label: 'Avg Risk Score', value: isNaN(avgRisk) ? 0 : avgRisk, icon: BarChart3, color: 'warning', trend: 'Across all patients', trendUp: avgRisk < 50 },
     { label: 'Total Screenings', value: allScreenings.length, icon: Activity, color: 'info', trend: 'All time records', trendUp: true },
-    { label: 'Consultations', value: 12, icon: Stethoscope, color: 'accent', trend: 'This month', trendUp: true },
+    // { label: 'Consultations', value: 12, icon: Stethoscope, color: 'accent', trend: 'This month', trendUp: true },
   ];
 
   if (loading) {
@@ -254,7 +254,7 @@ export default function DoctorDashboard() {
               </div>
               <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
                 {filteredPatients.map(p => {
-                  const l = p.screenings[p.screenings.length - 1];
+                  const l = p.screenings[0];
                   const isSelected = (p._id || p.id) === (selectedPatient._id || selectedPatient.id);
                   return (
                     <motion.button key={p._id || p.id} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
@@ -338,7 +338,7 @@ export default function DoctorDashboard() {
                   ) : (
                     <div className="space-y-1.5">
                       {highRiskPatients.map(p => {
-                        const l = p.screenings[p.screenings.length - 1];
+                        const l = p.screenings[0];
                         return (
                           <motion.div key={p._id || p.id} whileHover={{ scale: 1.01 }}
                             className="flex items-center justify-between p-2 rounded-lg bg-critical/5 border border-critical/10 cursor-pointer"

@@ -89,7 +89,7 @@ export default function PatientDashboard() {
     );
   }
 
-  const latest = patient.screenings?.[patient.screenings.length - 1];
+  const latest = patient.screenings?.[0];
   const bmi = patient.weight && patient.height ? (patient.weight / ((patient.height / 100) ** 2)).toFixed(1) : '--';
 
   const hasAccepted = requests.some((r: any) => r.status === 'accepted');
@@ -283,7 +283,7 @@ export default function PatientDashboard() {
                 <Calendar className="h-4 w-4 text-primary" /> Recent Screenings
               </h3>
               <div className="space-y-2">
-                {patient.screenings?.slice(-4).reverse().map((s: any) => (
+                {patient.screenings?.slice(0, 4).map((s: any) => (
                   <div key={s.id} className="flex items-center justify-between p-2.5 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors">
                     <div>
                       <div className="text-xs font-medium text-foreground">{s.condition}</div>
