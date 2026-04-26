@@ -25,6 +25,6 @@ export const analyzeAudio = async (filePath) => {
         return response.data;
     } catch (error) {
         console.error('AI Service Error:', error?.response?.data || error.message);
-        // throw new Error('Failed to analyze audio through AI service');
+        return { error: error?.response?.data?.detail || error?.response?.data?.error || error.message || 'Failed to analyze audio through AI service' };
     }
 };
