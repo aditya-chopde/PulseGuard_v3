@@ -6,15 +6,25 @@ export const medicineService = {
     return response.data?.data || [];
   },
 
-  searchMedicines: async (params: { q?: string, drugClass?: string, dosageForm?: string, uses?: string, ingredients?: string } = {}) => {
+  searchMedicines: async (params: { 
+    q?: string, 
+    drugClass?: string, 
+    dosageForm?: string, 
+    uses?: string, 
+    ingredients?: string,
+    dosageStrength?: string,
+    routeOfAdministration?: string,
+    isAvailableOTC?: string,
+    requiresPrescription?: string
+  } = {}) => {
     const searchParams = new URLSearchParams();
-    if (params.q) searchParams.append('q', params.q);
-    if (params.drugClass) searchParams.append('drugClass', params.drugClass);
-    if (params.dosageForm) searchParams.append('dosageForm', params.dosageForm);
-    if (params.uses) searchParams.append('uses', params.uses);
-    if (params.ingredients) searchParams.append('ingredients', params.ingredients);
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== '') {
+        searchParams.append(key, value);
+      }
+    });
     
-    // Fallback to plain getMedicines if no search params and we just want some records
+    // Fallback to plain getMedicines if no search params
     if (searchParams.toString() === '') {
         const response = await api.get('/medicines');
         return response.data?.data || [];

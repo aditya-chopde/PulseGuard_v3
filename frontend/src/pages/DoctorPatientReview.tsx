@@ -151,12 +151,6 @@ export default function DoctorPatientReview() {
             <h3 className="text-lg font-semibold text-foreground mb-4">Risk Score Trend</h3>
             <RiskTrendChart screenings={patient.screenings} />
           </motion.div>
-          {latest && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="glass-card p-6">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Feature Contributions</h3>
-              <FeatureChart features={latest.features} />
-            </motion.div>
-          )}
         </div>
 
         {patient.screenings && patient.screenings.length > 0 && (
