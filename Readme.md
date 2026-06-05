@@ -286,7 +286,7 @@ PulseGuard bridges the gap between **advanced diagnostics** and **affordable hea
 
 ## 👨‍💻 Author
 
-**Aditya Chopde & Team**
+**Shripad Joshi & Team**
 Final Year Project – PulseGuard
 
 ---
